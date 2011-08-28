@@ -25,105 +25,146 @@
 </style>
 <button id="button" onclick="login()">Show me who's in my classes!</button> <progress id="progress" value=0></progress> <span id="status"></span>
 <br>
-<script>
-  FB.init({
+<script type="text/coffeescript">
+  @me = {};
+  @names = {}
+  @classes = []
+  
+  selectors = [
+    'strpos(lower(message), "3") >= 0'
+  ]
+
+  $ = (id) -> document.getElementById(id)
+  
+  t = new Date
+  t.setTime(new Date - 1000 * 60 * 60 * 24 * 7 * 4) #4 weeks in the past
+  time = Math.floor(t.getTime()/1000)
+  
+  filter = (list, func) -> x for x in list when func(x)
+  
+  FB.init {
     appId  : '282025336884',
-    status : true, // check login status
-    cookie : true, // enable cookies to allow the server to access the session
-    xfbml  : true, // parse XFBML
-    channelUrl : 'http://localhost/schedule/channel.html', // channel.html file
-    oauth  : true // enable OAuth 2.0
-  });
-  
-  var me = null;
-
-  
-  function userpic(user){
-    var div = document.createElement('div');
-    div.className = 'user';
-    div.innerHTML = '<span>'+user.name+'</span><br> ';
-    var img = new Image();
-    img.src = 'https://graph.facebook.com/'+user.id+'/picture'
-    div.appendChild(img);
-    return div;
+    status : true, # check login status
+    cookie : true, # enable cookies to allow the server to access the session
+    xfbml  : true, # parse XFBML
+    channelUrl : 'http://antimatter15.com/misc/schedule/channel.html', # channel.html file
+    oauth  : true # enable OAuth 2.0
   }
   
-  function showclass(name){
-    var div = document.createElement('div');
-    div.className = 'class';
-    div.style.display = 'none';
-    div.innerHTML = '<span>'+name.replace(/[^\w]/g, ' ').replace(/([a-z]\d)/i, '<b>$1</b>')+'</span><br>';
-    document.body.appendChild(div);
-    return div;
-  }
+  @login = ->
+    $('button').disabled = true
+    FB.login((resp) ->
+      FB.api '/me', (resp) ->
+        me = resp
+        console.log(resp)
+        getSchedule(me.id)
+        getFriends()
+    , {scope: 'read_stream'})
+    
   
   
-  function login(){
-    document.getElementById('button').disabled = true;
-    FB.login(function(resp){
-      console.log(resp);
-      FB.api('/me', function(response){
-        me = response;
-        getFriends();
-      })
-    }, {scope: 'read_stream'});
-  }
-  
-  
-  function getSchedule(uid, callback){
-    var selector = 'strlen(message) > 100';
-    FB.api({
+  getSchedule = (uid) ->
+    FB.api {
       method: 'fql.query',
-      query: 'SELECT message, uid, time from status where uid = "'+item.id+'" and '+selector+' and time > '+time
-    }, function(resp){
+      query: "select message, uid from status where uid=#{uid} and time > #{time} and (#{selectors.join(' or ')})"
+    }, (resp) ->
+      handleMessage(uid, status.message) for status in resp
+  
+  handleMessage = (uid, msg) ->
+    lines = for line in msg.split /\n|;/
+      [(' ' + line + ' ').toLowerCase()
+          .replace(/[^a-z0-9\s]/gi, ' ')
+          .replace(/[a-z](\d+)/i, '$1')
+          .replace(/(\d+)(st|nd|th|rd)/i, ' $1 ')
+          .replace(/\s+/g, ' ')
+          .replace(/^\s+|\s+$/g, '')
+          .replace(/\s(i+)\s/g, (a,b) -> " #{b.length} ")
+          .replace(/\s\d+(\s|$)/g, ' ')
+          .replace(/([a-z])\d/g, ' $1 ')
+          .replace(/\s[a-z]\s/g, ' ')
+          .replace(/(\d+)([a-z])/i, '$1 $2')
+          .replace(/^\s+|\s+$/g, ''), line]
+    items = filter lines, (line) ->
+      parts = line[0].split ' '
+      len = parts.length
+      len < 8 and !/sched/.test(parts[0])
+    if 5 < items.length < 11
+      nums = items.join(' ').match(/\d+/g)
+      if !nums or nums.length < 3
+        items = ("#{c+1} #{i[0]}" for i,c in items)
+      for item in items
+        name = item[1]
+        tags = item[0]
+        if num = tags.match(/\d+/)
+          tags = tags
+            .replace(/\s?\d+\s?/, ' ')
+            .replace(/^\s+|\s+$/g, '')
+          tags = num[0] + ' ' + tags
+          classify(item[1], tags.split(' '), uid)
+  
+  
+  classify = (name, parts, uid) ->
+    best = [-1, -1000]
+    for cls, index in classes
+      tags = cls.tag
+      score = 0
+      for part, index in parts
+        mul = 1
+        #mul = 3 if /\d+/.test(part) or index == parts.length - 1
+        if part in tags
+          score += 2 * mul
+        else
+          score += -1 * mul
+      for tag in tags
+        mul = 1
+        mul = 3 if /\d+/.test(tag)
+        if tag in parts
+          score += 1 * mul
+        else
+          score += -0.5 * mul
+      if score > best[1]
+        best = [index, score]
+        
+    cls = classes[best[0]]
+    if best[1] < 10
+      classes.push {
+        tag: parts.slice(0),
+        names: [name],
+        people: [uid]
+      }
+      
+      console.log("creating",names[uid],"as", cls.names[0], "only", best[1]) if cls
+    else
+      console.log("adding", names[uid], "to", cls.names[0], "because", best[1], cls.tag.slice(0), "is", parts.slice(0))
+      for tag in parts
+        cls.tag.push(tag) unless tag in cls.tag
+        
+      cls.people.push(uid) unless uid in cls.people
+      cls.names.push(name) unless name in cls.names
 
-      //console.log(resp);
-      for(var q = 0; q < resp.length; q++){
-        var Z = resp[q];
-        var name = namemap[Z.uid];
-        //console.log(name);
-        handleMessage({id: Z.uid, name: name}, Z.message);
-      }
-    });
-  }
   
   
-  function getFriends(){
-    var t = new Date(); 
-    var namemap = {};
-    t.setTime(new Date - 1000 * 60 * 60 * 24 * 7 * 4);
-    var time = Math.floor((t-0)/1000);
-    FB.api('/me/friends', function(response){
-      console.log(response);
-      var queries = [];
-      response.data.splice(0,0,{
-        id: me.id,
-        name: me.name
-      })
-      var friends = response.data.length;
-      var done = 0;
-      for(var i = 0; i < friends; i++){
-        var item = response.data[i];
-        namemap[item.id] = item.name;
-        //var selector = 'strpos(lower(message),"'+query.toLowerCase()+'") >= 0';
-        var selector = 'strlen(message) > 100';
-        FB.api({
-          method: 'fql.query',
-          query: 'SELECT message, uid, time from status where uid = "'+item.id+'" and '+selector+' and time > '+time
-        }, function(resp){
-          done++;
-          document.getElementById('progress').value = done/friends;
-          document.getElementById('status').innerText = done+'/'+friends;
-          //console.log(resp);
-          for(var q = 0; q < resp.length; q++){
-            var Z = resp[q];
-            var name = namemap[Z.uid];
-            //console.log(name);
-            handleMessage({id: Z.uid, name: name}, Z.message);
-          }
-        });
-      }
-    })
-  }
-  
+  getFriends = () ->
+    FB.api '/me/friends', (resp) ->
+      names[friend.id] = friend.name for friend in resp.data
+      for id, name of names
+        getSchedule(id)
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
 </script>
+<script src="coffee-script.js"></script>
