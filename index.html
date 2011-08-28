@@ -1,0 +1,129 @@
+<div id="fb-root"></div>
+<script src="http://connect.facebook.net/en_US/all.js"></script>
+<style>
+  .class {
+    background-color: #C0D1D3;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 10px;
+    display: inline-block;
+  }
+  
+  .user {
+    background-color: #77C484;
+    padding: 10px;
+    border-radius: 5px;
+    display: inline-block;
+    border: 1px solid #3AAA5A;
+    margin: 5px;
+  }
+  
+  body {
+    font-family: sans-serif;
+  }
+  
+</style>
+<button id="button" onclick="login()">Show me who's in my classes!</button> <progress id="progress" value=0></progress> <span id="status"></span>
+<br>
+<script>
+  FB.init({
+    appId  : '282025336884',
+    status : true, // check login status
+    cookie : true, // enable cookies to allow the server to access the session
+    xfbml  : true, // parse XFBML
+    channelUrl : 'http://localhost/schedule/channel.html', // channel.html file
+    oauth  : true // enable OAuth 2.0
+  });
+  
+  var me = null;
+
+  
+  function userpic(user){
+    var div = document.createElement('div');
+    div.className = 'user';
+    div.innerHTML = '<span>'+user.name+'</span><br> ';
+    var img = new Image();
+    img.src = 'https://graph.facebook.com/'+user.id+'/picture'
+    div.appendChild(img);
+    return div;
+  }
+  
+  function showclass(name){
+    var div = document.createElement('div');
+    div.className = 'class';
+    div.style.display = 'none';
+    div.innerHTML = '<span>'+name.replace(/[^\w]/g, ' ').replace(/([a-z]\d)/i, '<b>$1</b>')+'</span><br>';
+    document.body.appendChild(div);
+    return div;
+  }
+  
+  
+  function login(){
+    document.getElementById('button').disabled = true;
+    FB.login(function(resp){
+      console.log(resp);
+      FB.api('/me', function(response){
+        me = response;
+        getFriends();
+      })
+    }, {scope: 'read_stream'});
+  }
+  
+  
+  function getSchedule(uid, callback){
+    var selector = 'strlen(message) > 100';
+    FB.api({
+      method: 'fql.query',
+      query: 'SELECT message, uid, time from status where uid = "'+item.id+'" and '+selector+' and time > '+time
+    }, function(resp){
+
+      //console.log(resp);
+      for(var q = 0; q < resp.length; q++){
+        var Z = resp[q];
+        var name = namemap[Z.uid];
+        //console.log(name);
+        handleMessage({id: Z.uid, name: name}, Z.message);
+      }
+    });
+  }
+  
+  
+  function getFriends(){
+    var t = new Date(); 
+    var namemap = {};
+    t.setTime(new Date - 1000 * 60 * 60 * 24 * 7 * 4);
+    var time = Math.floor((t-0)/1000);
+    FB.api('/me/friends', function(response){
+      console.log(response);
+      var queries = [];
+      response.data.splice(0,0,{
+        id: me.id,
+        name: me.name
+      })
+      var friends = response.data.length;
+      var done = 0;
+      for(var i = 0; i < friends; i++){
+        var item = response.data[i];
+        namemap[item.id] = item.name;
+        //var selector = 'strpos(lower(message),"'+query.toLowerCase()+'") >= 0';
+        var selector = 'strlen(message) > 100';
+        FB.api({
+          method: 'fql.query',
+          query: 'SELECT message, uid, time from status where uid = "'+item.id+'" and '+selector+' and time > '+time
+        }, function(resp){
+          done++;
+          document.getElementById('progress').value = done/friends;
+          document.getElementById('status').innerText = done+'/'+friends;
+          //console.log(resp);
+          for(var q = 0; q < resp.length; q++){
+            var Z = resp[q];
+            var name = namemap[Z.uid];
+            //console.log(name);
+            handleMessage({id: Z.uid, name: name}, Z.message);
+          }
+        });
+      }
+    })
+  }
+  
+</script>
