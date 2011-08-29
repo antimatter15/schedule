@@ -28,7 +28,7 @@
 <script type="text/coffeescript">
   @me = {};
   @names = {}
-  @classes = []
+  @times = {}
   
   selectors = [
     'strpos(lower(message), "3") >= 0'
@@ -57,6 +57,7 @@
       FB.api '/me', (resp) ->
         me = resp
         console.log(resp)
+        names[me.id] = me.name
         getSchedule(me.id)
         getFriends()
     , {scope: 'read_stream'})
@@ -102,45 +103,73 @@
           tags = num[0] + ' ' + tags
           classify(item[1], tags.split(' '), uid)
   
+  @count = (p, tag) ->
+    period = times[p]
+    ents = period[tag].entities
+    all = {}
+    score = 0
+    total = 0
+    for v in ents
+      for e in entities[v]
+        all[e] = 1
+    for v of all
+      total++
+    ents.length / total
+    
   
   classify = (name, parts, uid) ->
+    period = parts[0]
+    parts = parts.slice(1)
+    teacher = parts.slice(-1)[0]
+    times[period] = {} unless times[period]?
+    slot = times[period]
+    slot[teacher] = {tag:[],names:[],people:[]} unless slot[teacher]?
+    cls = slot[teacher]
+    for tag in parts
+      cls.tag.push(tag) unless tag in cls.tag
+    cls.people.push(uid) unless uid in cls.people
+    cls.names.push(name) unless name in cls.names
+  
+  
+  
+  classify2 = (name, parts, uid) ->
+    
     best = [-1, -1000]
+    period = parts[0]
+    parts = parts.slice(1)
+    times[period] = [] if !times[period]
+    classes = times[period]
+    console.log "classifying",name,parts,names[uid]
+    return
     for cls, index in classes
       tags = cls.tag
       score = 0
-      for part, index in parts
-        mul = 1
-        #mul = 3 if /\d+/.test(part) or index == parts.length - 1
-        if part in tags
-          score += 2 * mul
-        else
-          score += -1 * mul
-      for tag in tags
-        mul = 1
-        mul = 3 if /\d+/.test(tag)
-        if tag in parts
-          score += 1 * mul
-        else
-          score += -0.5 * mul
-      if score > best[1]
-        best = [index, score]
-        
-    cls = classes[best[0]]
+      console.log(cls)
+      #for part, index in parts
+      #  mul = 1
+      #  #mul = 3 if /\d+/.test(part) or index == parts.length - 1
+      #  if part in tags
+      #    score += 2 * mul
+      #  else
+      #    score += -1 * mul
+      #if score > best[1]
+      #  best = [index, score]
+ 
     if best[1] < 10
       classes.push {
         tag: parts.slice(0),
         names: [name],
         people: [uid]
       }
-      
+      cls = classes[best[0]]
       console.log("creating",names[uid],"as", cls.names[0], "only", best[1]) if cls
     else
       console.log("adding", names[uid], "to", cls.names[0], "because", best[1], cls.tag.slice(0), "is", parts.slice(0))
-      for tag in parts
-        cls.tag.push(tag) unless tag in cls.tag
-        
-      cls.people.push(uid) unless uid in cls.people
-      cls.names.push(name) unless name in cls.names
+      #for tag in parts
+      #  cls.tag.push(tag) unless tag in cls.tag
+      #  
+      #cls.people.push(uid) unless uid in cls.people
+      #cls.names.push(name) unless name in cls.names
 
   
   
