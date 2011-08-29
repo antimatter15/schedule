@@ -1,0 +1,20 @@
+<div pub-key="db374c05-5ad4-48e0-bd3a-360445c4ad69" sub-key="f201d435-7a50-11df-83d6-d7b76dc004f6" ssl="off" origin="pubsub.pubnub.com" id="pubnub"></div>
+<script src="http://cdn.pubnub.com/pubnub-3.1.min.js"></script>
+<script>(function(){
+
+    // LISTEN FOR MESSAGES
+    PUBNUB.subscribe({
+        channel  : "logging",      // CONNECT TO THIS CHANNEL.
+        error    : function() {        // LOST CONNECTION (auto reconnects)
+            alert("Connection Lost. Will auto-reconnect when Online.")
+        },
+        callback : function(message) { // RECEIVED A MESSAGE.
+            console.log(message)
+        },
+        connect  : function() {        // CONNECTION ESTABLISHED.
+
+
+        }
+    })
+
+})();</script>

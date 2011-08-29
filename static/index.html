@@ -1,0 +1,63 @@
+<!doctype html>
+<head>
+<title>Schedule Compare</title>
+<style>
+  .class {
+    background-color: #D7E1E2;
+    overflow: hidden;
+    padding: 7px;
+    margin: 5px;
+    display: inline-block;
+  }
+  
+  .class.hasme {
+    background-color: #BED3BC;    
+  }
+  
+  img {
+    width: 50px;
+    height: 50px;
+    background-color: #F4E5BA;
+  }
+  
+  .user {
+    padding: 1px;
+    display: inline-block;
+    margin: 5px;
+    font-size: small;
+  }
+  
+  .user span {
+    float: right;
+    padding: 12px;
+  }
+  
+  
+  body {
+    font-family: sans-serif;
+  }
+  
+  .class a {
+    text-decoration: none;
+    color: black;
+  }
+  
+</style>
+</head>
+<body>
+<div id="fb-root"></div>
+<script src="http://connect.facebook.net/en_US/all.js"></script>
+
+<button id="button" onclick="login()">Show me who is in my classes!</button> <progress id="progress" style="width: 400px;display:none"></progress> <span id="status"></span>
+<br>
+
+<script>
+function log(a){
+  //PUBNUB.publish({channel: "logging", message: a })
+}
+
+</script>
+<script src="main.js"></script>
+</body>
+</html>
+
