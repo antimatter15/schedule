@@ -1,6 +1,7 @@
 @me = {};
 @names = {}
 @times = {}
+@people = {}
 
 selectors = [
   'strpos(lower(message), "3") >= 0',
@@ -37,22 +38,33 @@ FB.init {
         #console.log("Finding Friends")
         getFriends()
 
-  , {scope: 'read_stream'})
+  , {scope: 'read_stream,user_status,friends_status'})
   
 completed = 0
 
 getSchedule = (uid, cb) ->
   FB.api {
     method: 'fql.query',
-    query: "select message, uid from status where uid=#{uid} and time > #{time} and (#{selectors.join(' or ')})"
+    query: "select message, uid, status_id, time from status where uid=#{uid} and time > #{time} and (#{selectors.join(' or ')})"
   }, (resp) ->
-    handleMessage(uid, status.message) for status in resp
+    classes = []
+    stime = 0
+    sid = 0
+    for status in resp
+      temp = handleMessage(uid, status.message)
+      if temp.length > 0
+        classes = classes.concat(temp) 
+        sid = status.status_id
+        stime = statustime
+    @people[uid] = {time: stime, status_id: sid, classes, uid}
+    
     cb() if cb
     $('progress').value = (++completed)/(friends) if friends
     $('progress').style.display = 'none' if completed/friends==1
 
 handleMessage = (uid, msg) ->
   log("#{names[uid]} - #{msg}")
+  classes = []
   lines = for line in msg.split /\n|;/
     [(' ' + line + ' ').toLowerCase()
         .replace(/[a-z]+\?/gi, '')
@@ -83,7 +95,8 @@ handleMessage = (uid, msg) ->
           .replace(/\s?\d+\s?/, ' ')
           .replace(/^\s+|\s+$/g, '')
         tags = num[0] + ' ' + tags
-        classify(item[1], tags.split(' '), uid)
+        classes.push(classify(item[1], tags.split(' '), uid))
+  classes
 
 classify = (name, parts, uid) ->
   return if !name or !parts[0] or parts.length < 2 or !parts.slice(-1)[0]
@@ -101,6 +114,7 @@ classify = (name, parts, uid) ->
 
   cls.names.push(name) unless name in cls.names
   cls.el = showclass(name) unless cls.el
+  [period, teacher]
 
 
   unless uid in cls.people
@@ -135,6 +149,8 @@ showclass = (name) ->
   div
     
 showuser = (uid) ->
+  a = document.createElement('a')
+  a.href = 'http://facebook.com/' + uid
   div = document.createElement('div')
   div.className = 'user'
   span = document.createElement('span')
@@ -143,7 +159,8 @@ showuser = (uid) ->
   img.src = "https://graph.facebook.com/#{uid}/picture?type=square"
   div.appendChild(img)
   #div.style.backgroundImage = "url(https://graph.facebook.com/#{uid}/picture?type=large)"
-  div.appendChild(span)
-  div
+  div.appendChild span
+  a.appendChild div
+  a
     
     
