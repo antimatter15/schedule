@@ -10,3 +10,42 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: Student
+  properties:
+  - name: t01
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t02
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t03
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t04
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t05
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t06
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t07
+  - name: time
+
+- kind: Student
+  properties:
+  - name: t08
+  - name: time

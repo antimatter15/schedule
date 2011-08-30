@@ -14,7 +14,7 @@
     background-color: #BED3BC;    
   }
   
-  img {
+  .user img {
     width: 50px;
     height: 50px;
     background-color: #F4E5BA;
@@ -35,6 +35,7 @@
   
   body {
     font-family: sans-serif;
+    background: #EFEEEE;
   }
   
   .class a {
@@ -42,13 +43,62 @@
     color: black;
   }
   
+  #button>div {
+    margin-right: auto;
+    margin-left: auto;
+    margin-top: 100px;
+    padding-bottom: 20px;
+    width: 800px;
+    background-color: white;
+  }
+  
+  #button {
+    text-decoration: none;
+    color: black;
+  }
+  
+  #button img {
+    float: left;
+    margin: 20px;
+  }
+  
+  #content {
+    padding: 20px;
+  }
+  
+  #button h1 {
+    margin-bottom: 4px;  
+  } 
+  
+  #submit {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 10px;
+    background-color: #EFC78B;
+  }
 </style>
 </head>
 <body>
 <div id="fb-root"></div>
 <script src="http://connect.facebook.net/en_US/all.js"></script>
+<div id="submit" style="display:none">
+  It looks like <b>you don't have your schedule posted</b> as a status using the proper format. Go to <a href="http://facebook.com/">Facebook</a>, and <b>post your schedule</b> in the format of "[Period Number] [Class Name] [Teacher Name]" on different lines. Once you're done, come back here.
+</div>
 
-<button id="button" onclick="login()">Show me who is in my classes!</button> <progress id="progress" style="width: 400px;display:none"></progress> <span id="status"></span>
+<a href="#"  id="button" onclick="login();return false">
+  <div>
+    <img src="/static/schedule.png" style="width: 120px">
+    <div id="content">
+      <h1>Find which friends are in your classes</h1>
+      <b>Click here</b> and we'll automatically scan the statuses of you and all your friends and show you a list of classes you have together.
+        
+    </div>
+  </div>
+</a>
+<progress id="progress" style="width: 100%;display:none"></progress> 
+
 <br>
 
 <script>

@@ -13,7 +13,7 @@ $ = (id) -> document.getElementById(id)
 
 t = new Date
 t.setTime(new Date - 1000 * 60 * 60 * 24 * 7 * 4) #4 weeks in the past
-time = Math.floor(t.getTime()/1000)
+old_thresh = Math.floor(t.getTime()/1000)
 
 filter = (list, func) -> x for x in list when func(x)
 
@@ -27,15 +27,20 @@ FB.init {
 }
 
 @login = ->
-  $('button').disabled = true
+  $('button').style.display = 'none'
   $('progress').style.display = ''
   FB.login((resp) ->
     FB.api '/me', (resp) ->
       @me = resp
       #console.log(resp)
+      
       names[me.id] = me.name
-      getSchedule me.id, ->
+      getSchedule me.id, (classes) ->
         completed = 0
+        if classes.length > 0
+          searchClasses me.id
+        else
+          $("submit").style.display = ''
         #console.log("Finding Friends")
         getFriends()
 
@@ -43,10 +48,26 @@ FB.init {
   
 completed = 0
 
+
+searchClasses = (uid) ->
+  str = JSON.stringify(cls.join(';') for cls in @people[uid].classes)
+  xhr = new XMLHttpRequest
+  xhr.open 'get', "/search?classes=#{encodeURIComponent(str)}", true
+  xhr.onload = ->
+    for cls, classes of JSON.parse(xhr.responseText)
+      [time, teacher] = cls.split(";")
+      for student in classes
+        [name, uid, status_id] = student
+        unless uid is me.id
+          names[uid] = name
+          classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
+  xhr.send()
+
+
 getSchedule = (uid, cb) ->
   FB.api {
     method: 'fql.query',
-    query: "select message, uid, status_id, time from status where uid=#{uid} and time > #{time} and (#{selectors.join(' or ')})"
+    query: "select message, uid, status_id, time from status where uid=#{uid} and time > #{old_thresh} and (#{selectors.join(' or ')})"
   }, (resp) ->
     classes = []
     stime = 0
@@ -60,17 +81,23 @@ getSchedule = (uid, cb) ->
     if classes.length > 0
       @people[uid] = {time: stime, status_id: sid, classes, uid}
     
-    cb() if cb
+    cb(classes) if cb
     $('progress').value = (++completed)/(friends) if friends
-    $('progress').style.display = 'none' if completed/friends==1
+    if completed/friends == 1
+      $('progress').style.display = 'none'
+      uploadClasses()
 
 
 
-@uploadClasses = ->
+uploadClasses = ->
   dense = for uid, friend of people
-    console.log(uid, friend)
-    [uid, friend.status_id, friend.time, cls.join('') for cls in friend.classes]
-  JSON.stringify(dense)
+    [names[uid], uid, friend.status_id, friend.time-0, cls.join(';') for cls in friend.classes]
+  xhr = new XMLHttpRequest
+  xhr.open 'post', '/upload', true
+  xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
+  #xhr.onload = ->
+  #  console.log(xhr.responseText)
+  xhr.send("data=#{encodeURIComponent(JSON.stringify(dense))}")
 
 handleMessage = (status) ->
   [uid, msg] = [status.uid, status.message]
@@ -95,7 +122,7 @@ handleMessage = (status) ->
     len = parts.length
     len < 8 and !/sched/.test(parts[0])
   if 5 < items.length
-    nums = (i[0] for i in items).join(' ').match(/\d+/g)
+    nums = (i[0] for i in items).join('').match(/\d+/g)
     if !nums or nums.length < 3
       items = (["#{c+1} #{i[0]}",i[1]] for i,c in items)
     for item in items
@@ -121,11 +148,11 @@ classify = (name, parts, status) ->
   slot[teacher] = {tag:[],names:[],people:[]} unless slot[teacher]?
   cls = slot[teacher]
   
-  #console.log(names[uid], period, teacher)
   for tag in parts
     cls.tag.push(tag) unless tag in cls.tag
 
   cls.names.push(name) unless name in cls.names
+  
   cls.el = showclass(name) unless cls.el
   unless uid in cls.people
     if uid is me.id
@@ -140,8 +167,6 @@ classify = (name, parts, status) ->
   if cls.people.length > 1
     cls.el.style.display = ''  
   [period, teacher]
-
-
 
 friends = 0
 getFriends = () ->
@@ -168,11 +193,10 @@ showuser = (status) ->
   div = document.createElement('div')
   div.className = 'user'
   span = document.createElement('span')
-  span.innerHTML = names[uid]
+  span.innerHTML = names[uid]#.replace(/(\w+)/,"<b>$1</b>")
   img = new Image()
   img.src = "https://graph.facebook.com/#{uid}/picture?type=square"
   div.appendChild(img)
-  #div.style.backgroundImage = "url(https://graph.facebook.com/#{uid}/picture?type=large)"
   div.appendChild span
   a.appendChild div
   a
