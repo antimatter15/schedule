@@ -29,9 +29,35 @@ FB.init {
   oauth  : true # enable OAuth 2.0
 }
 
+progress_value = 0
+anim_state = 0
+
+progressAnimation = ->
+  if progress_value is -1
+    $('progress_val').style.width = '10%'
+    $('progress_val').style.left = (((anim_state++) % 110) - 10) + '%'
+    setTimeout progressAnimation, 20
+  else
+    $('progress_val').style.left = '0'
+    anim_state = -1
+    
+setProgress = (val) ->
+  progress_value = val
+  if anim_state = -1
+    progressAnimation()
+  if val == 0
+    #$('progress').style.display = 'none'
+    $('progress_val').style.width = '0'
+  else
+    $('progress').style.display = ''
+    if val isnt -1
+      $('progress_val').style.width = 100 * val + '%'
+
+
 @login = ->
-  $('button').style.display = 'none'
-  $('progress').style.display = ''
+  $('buttonparent').style.display = 'none'
+  $('share').style.display = 'none'
+  setProgress -1
   FB.login (resp) ->
     FB.api '/me', (resp) ->
       @me = resp      
@@ -106,9 +132,10 @@ getSchedule = (uid, cb) ->
       @people[uid] = {time: stime, status_id: sid, classes, uid}
     
     cb(classes) if cb
-    $('progress').value = (++completed)/(friends) if friends
+    if friends
+      setProgress (++completed)/friends
     if completed/friends == 1
-      $('progress').style.display = 'none'
+      setProgress 0
       $('share').style.display = ''
       uploadClasses()
 
@@ -205,13 +232,18 @@ getFriends = (cb) ->
       friends++
       getSchedule(id)
       
-    
+countmutual = (uid1, uid2) ->
+  mutual = 0
+  for cls, idx in @people[uid1].classes
+    other = @people[uid2].classes[idx]
+    mutual++ if cls.join('') == other.join('')
+  mutual
     
 showclass = (name) ->
   div = document.createElement('div')
   div.className = 'class'
   div.style.display = 'none'
-  div.innerHTML = "<span>#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span><br>"
+  div.innerHTML = "<div class='classname'><span>#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span></div>"
   $('results').appendChild(div)
   div
     
@@ -225,13 +257,12 @@ showuser = (status) ->
     a.href = 'http://facebook.com/' + uid
   div = document.createElement('div')
   div.className = 'user'
-  span = document.createElement('span')
-  span.innerHTML = names[uid]#.replace(/(\w+)/,"<b>$1</b>")
+  name = document.createElement('div')
+  name.innerHTML = '<span>'+names[uid]+'</span>'
   img = new Image()
   img.src = "https://graph.facebook.com/#{uid}/picture?type=square"
   div.appendChild(img)
-  div.appendChild span
+  div.appendChild name
   a.appendChild div
   a
-    
     

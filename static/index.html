@@ -27,7 +27,7 @@
     font-size: small;
   }
   
-  .user span {
+  .user div {
     float: right;
     padding: 12px;
   }
@@ -45,12 +45,11 @@
     color: black;
   }
   
-  #button>div {
+  #buttonparent {
     margin-right: auto;
     margin-left: auto;
     margin-top: 100px;
-    padding-bottom: 20px;
-    width: 800px;
+    width: 700px;
     background-color: white;
   }
   
@@ -61,17 +60,23 @@
   
   #button img {
     float: left;
-    margin: 20px;
+    margin: 30px;
   }
   
   #content {
     padding: 20px;
+    
   }
   
   #button h1 {
     margin-bottom: 4px;  
     margin-top: 17px;
+    font-size: 30px;
   } 
+  
+  .classname {
+    padding-bottom: 5px;
+  }
   
   #submit {
     
@@ -82,42 +87,60 @@
   #results {
     margin: 5px;
   }
+  
+  #tooltip {
+    background-color: #BABABA;
+    position: absolute;
+    z-index:  42;
+    left: 100px;
+    top: 100px;
+    padding: 10px;
+  }
+  
+  .subtext {
+    font-size: x-small;
+  }
 </style>
-<link rel="stylesheet" href="/static/progress-polyfill.css">
+<meta name="description" content="Instantly compare your class schedule with your friends for coming school year" >
 </head>
 <body>
 <div id="fb-root"></div>
-<script src="http://connect.facebook.net/en_US/all.js"></script>
 
 
 <div id="submit" style="display:none">
-  It looks like <b>you don't have your schedule posted</b> as a status using the proper format. Go to <a href="http://facebook.com/">Facebook</a>, and <b>post your schedule</b> in the format of "[Period Number] [Class Name] [Teacher Name]" on different lines. Once you're done, come back here.
+  It looks like <b>you don't have your schedule posted</b> as a status using the proper format. Go to <a href="http://facebook.com/">Facebook</a>, and <b>post your schedule</b> in the format of "[Period <b>Number</b>] [<b>Class</b> Name] [<b>Teacher</b> Name]" on different lines. Once you're done, come back here.
 </div>
-
-<div id="header" style="height: 30px;overflow:hidden;">
-<center>
-<progress id="progress" style="width: 98%;margin-top:10px;display:none"></progress> 
-</center>
-<div id="share" style="display:none;margin-left: 10px;margin-top:5px;width:450px;overflow:none">
+<div id="share" style="margin-left: 10px;position:absolute;">
 <fb:like href="http://schedule-compare.appspot.com/" send="true" width="450" show_faces="false" font=""></fb:like>
 </div>
+
+<div id="header" style="top:0;left:0;">
+<center>
+  <div id="progress" style="width:99%;margin-top:10px;text-align:left;overflow:hidden">
+    <div id="progress_val" style="width:0%;background-color:#627AAD;height:23px;position:relative"></div>
+  </div>
+</center>
+
 </div>
 
-<a href="#"  id="button" onclick="login();return false">
-  <div>
-    <div style="width:120px;display:inline;background: url(/static/schedule.png) no-repeat;margin:20px;height:121px;float:left"></div>
-    <div id="content">
-      <h1>Find which friends are in your classes</h1>
-      <b>Click here</b> and we'll automatically scan the statuses of you and all your friends and show you a list of classes you have together.
-        
-    </div>
-  </div>
-</a>
 
 <div id="results">
 
+
 </div>
-<script src="/static/progress-polyfill.js"></script>
+<div id="buttonparent">
+  <a href="#"  id="button" onclick="login();return false">
+    <div style="padding-bottom:20px;">
+    <div style="width:120px;display:inline;background: url(/static/schedule.png) no-repeat;margin:20px;height:121px;float:left"></div>
+    <div id="content">
+      <h1>Find out who is in your classes</h1>
+      <b>Click here</b> and we'll automatically scan the statuses of you and all your friends and show you a list of classes you have together.
+    </div>
+    </div>
+  </a>
+</div>
+
+<script src="http://connect.facebook.net/en_US/all.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

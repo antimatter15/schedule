@@ -1,5 +1,5 @@
 (function() {
-  var $, checkFriendship, classify, completed, current_status, direct_friend, filter, friends, getFriends, getSchedule, handleMessage, old_thresh, processSearch, race, searchClasses, selectors, showclass, showuser, t, uploadClasses;
+  var $, anim_state, checkFriendship, classify, completed, countmutual, current_status, direct_friend, filter, friends, getFriends, getSchedule, handleMessage, old_thresh, processSearch, progressAnimation, progress_value, race, searchClasses, selectors, setProgress, showclass, showuser, t, uploadClasses;
   var __indexOf = Array.prototype.indexOf || function(item) {
     for (var i = 0, l = this.length; i < l; i++) {
       if (this[i] === item) return i;
@@ -40,9 +40,36 @@
     channelUrl: 'http://schedule-compare.appspot.com/channel.html',
     oauth: true
   });
+  progress_value = 0;
+  anim_state = 0;
+  progressAnimation = function() {
+    if (progress_value === -1) {
+      $('progress_val').style.width = '10%';
+      $('progress_val').style.left = (((anim_state++) % 110) - 10) + '%';
+      return setTimeout(progressAnimation, 20);
+    } else {
+      $('progress_val').style.left = '0';
+      return anim_state = -1;
+    }
+  };
+  setProgress = function(val) {
+    progress_value = val;
+    if (anim_state = -1) {
+      progressAnimation();
+    }
+    if (val === 0) {
+      return $('progress_val').style.width = '0';
+    } else {
+      $('progress').style.display = '';
+      if (val !== -1) {
+        return $('progress_val').style.width = 100 * val + '%';
+      }
+    }
+  };
   this.login = function() {
-    $('button').style.display = 'none';
-    $('progress').style.display = '';
+    $('buttonparent').style.display = 'none';
+    $('share').style.display = 'none';
+    setProgress(-1);
     return FB.login(function(resp) {
       return FB.api('/me', function(resp) {
         this.me = resp;
@@ -177,10 +204,10 @@
         cb(classes);
       }
       if (friends) {
-        $('progress').value = (++completed) / friends;
+        setProgress((++completed) / friends);
       }
       if (completed / friends === 1) {
-        $('progress').style.display = 'none';
+        setProgress(0);
         $('share').style.display = '';
         return uploadClasses();
       }
@@ -350,17 +377,30 @@
       return _results;
     });
   };
+  countmutual = function(uid1, uid2) {
+    var cls, idx, mutual, other, _len, _ref;
+    mutual = 0;
+    _ref = this.people[uid1].classes;
+    for (idx = 0, _len = _ref.length; idx < _len; idx++) {
+      cls = _ref[idx];
+      other = this.people[uid2].classes[idx];
+      if (cls.join('') === other.join('')) {
+        mutual++;
+      }
+    }
+    return mutual;
+  };
   showclass = function(name) {
     var div;
     div = document.createElement('div');
     div.className = 'class';
     div.style.display = 'none';
-    div.innerHTML = "<span>" + (name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')) + "</span><br>";
+    div.innerHTML = "<div class='classname'><span>" + (name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')) + "</span></div>";
     $('results').appendChild(div);
     return div;
   };
   showuser = function(status) {
-    var a, div, img, span, uid;
+    var a, div, img, name, uid;
     uid = status.uid;
     a = document.createElement('a');
     a.target = '_blank';
@@ -371,12 +411,12 @@
     }
     div = document.createElement('div');
     div.className = 'user';
-    span = document.createElement('span');
-    span.innerHTML = names[uid];
+    name = document.createElement('div');
+    name.innerHTML = '<span>' + names[uid] + '</span>';
     img = new Image();
     img.src = "https://graph.facebook.com/" + uid + "/picture?type=square";
     div.appendChild(img);
-    div.appendChild(span);
+    div.appendChild(name);
     a.appendChild(div);
     return a;
   };
