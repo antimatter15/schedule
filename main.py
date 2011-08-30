@@ -4,10 +4,11 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from django.utils import simplejson
 from google.appengine.ext import db
+from google.appengine.api import memcache
+
 import datetime
 
 class Student(db.Model):
-  #uid = db.StringProperty()
   name = db.StringProperty()
   status_id = db.StringProperty()
   time = db.DateProperty()
@@ -32,48 +33,54 @@ class UploadHandler(webapp.RequestHandler):
     users = simplejson.loads(self.request.get('data'))
     for user in users:
       [name, uid, status_id, time, classes] = user
-      student = Student.get_or_insert(uid)
-      student.name = name
-      student.status_id = status_id
-      student.time = datetime.date.fromtimestamp(time)
-      for c in classes:
-        [period, teacher] = c.split(";", 1)
-        period = int(period)
-        if period is 0:
-          student.t00 = teacher
-        elif period is 1:
-          student.t01 = teacher
-        elif period is 2:
-          student.t02 = teacher
-        elif period is 3:
-          student.t03 = teacher
-        elif period is 4:
-          student.t04 = teacher
-        elif period is 5:
-          student.t05 = teacher
-        elif period is 6:
-          student.t06 = teacher
-        elif period is 7:
-          student.t07 = teacher
-        elif period is 8:
-          student.t08 = teacher
-        elif period is 9:
-          student.t09 = teacher                                                            
-        elif period is 10:
-          student.t10 = teacher          
-        elif period is 11:
-          student.t11 = teacher          
-        elif period is 12:
-          student.t12 = teacher          
-        elif period is 13:
-          student.t13 = teacher
-      student.put()
-      self.response.out.write(uid)
+      if memcache.get(uid) is None:
+        memcache.add(uid, 1, 60 * 60 * 24 * 30)
+        student = Student.get_by_key_name(uid)
+        if student is None:
+          student = Student(key_name = uid)
+          student.name = name
+          student.status_id = status_id
+          student.time = datetime.date.fromtimestamp(time)
+          for c in classes:
+            [period, teacher] = c.split(";", 1)
+            period = int(period)
+            if period is 0:
+              student.t00 = teacher
+            elif period is 1:
+              student.t01 = teacher
+            elif period is 2:
+              student.t02 = teacher
+            elif period is 3:
+              student.t03 = teacher
+            elif period is 4:
+              student.t04 = teacher
+            elif period is 5:
+              student.t05 = teacher
+            elif period is 6:
+              student.t06 = teacher
+            elif period is 7:
+              student.t07 = teacher
+            elif period is 8:
+              student.t08 = teacher
+            elif period is 9:
+              student.t09 = teacher                                                            
+            elif period is 10:
+              student.t10 = teacher          
+            elif period is 11:
+              student.t11 = teacher          
+            elif period is 12:
+              student.t12 = teacher          
+            elif period is 13:
+              student.t13 = teacher
+        student.put()
+        self.response.out.write(uid+",")
 
 
 class SearchHandler(webapp.RequestHandler):
   def get(self):
+    self.response.headers['Content-Type'] = 'application/json'
     classes = simplejson.loads(self.request.get('classes'))
+    searcher = self.request.get('uid')
     results = {}
     for c in classes:
       results[c] = []
@@ -84,7 +91,9 @@ class SearchHandler(webapp.RequestHandler):
       q.filter("time >", datetime.datetime.now() - datetime.timedelta(weeks = 4))
       q.filter("t"+period + " =", teacher)
       for user in q.fetch(121):
-        results[c].append([user.name, user.key().name(), user.status_id])
+        uid = user.key().name()
+        if uid != searcher:
+          results[c].append([user.name, uid, user.status_id])
     self.response.out.write(simplejson.dumps(results))
       
   

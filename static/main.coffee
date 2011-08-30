@@ -2,6 +2,9 @@
 @names = {}
 @times = {}
 @people = {}
+direct_friend = {}
+friends = 0
+completed = 0
 current_status = null
 
 selectors = [
@@ -22,47 +25,68 @@ FB.init {
   status : true, # check login status
   cookie : true, # enable cookies to allow the server to access the session
   xfbml  : true, # parse XFBML
-  channelUrl : 'channel.html', # channel.html file
+  channelUrl : 'http://schedule-compare.appspot.com/channel.html', # channel.html file
   oauth  : true # enable OAuth 2.0
 }
 
 @login = ->
   $('button').style.display = 'none'
   $('progress').style.display = ''
-  FB.login((resp) ->
+  FB.login (resp) ->
     FB.api '/me', (resp) ->
-      @me = resp
-      #console.log(resp)
-      
+      @me = resp      
       names[me.id] = me.name
       getSchedule me.id, (classes) ->
-        completed = 0
+        [cb1, cb2] = race processSearch
         if classes.length > 0
-          searchClasses me.id
+          searchClasses me.id, cb1
         else
           $("submit").style.display = ''
-        #console.log("Finding Friends")
-        getFriends()
+        completed = 0
+        getFriends cb2
 
-  , {scope: 'read_stream,user_status,friends_status'})
-  
-completed = 0
+  , {scope: 'read_stream,user_status,friends_status'}
 
 
-searchClasses = (uid) ->
+race = (cb) -> 
+  gcb1 = false
+  gcb2 = false
+  ccb = ->
+    cb(gcb1, gcb2) if gcb1 and gcb2
+  cb1 = (a) ->
+    gcb1 = a || true
+    ccb()
+  cb2 = (b) ->
+    gcb2 = b || true
+    ccb()
+  [cb1, cb2]
+
+
+processSearch = (json) ->
+  for cls, classes of json
+    [time, teacher] = cls.split(";")
+    for student in classes
+      [name, uid, status_id] = student
+      checkFriendship(uid, time, teacher, name, status_id) if uid isnt me.id
+
+searchClasses = (uid, process) ->
   str = JSON.stringify(cls.join(';') for cls in @people[uid].classes)
   xhr = new XMLHttpRequest
-  xhr.open 'get', "/search?classes=#{encodeURIComponent(str)}", true
-  xhr.onload = ->
-    for cls, classes of JSON.parse(xhr.responseText)
-      [time, teacher] = cls.split(";")
-      for student in classes
-        [name, uid, status_id] = student
-        unless uid is me.id
-          names[uid] = name
-          classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
+  xhr.open 'get', "/search?uid=#{me.id}&classes=#{encodeURIComponent(str)}", true
+  xhr.onreadystatechange = ->
+    process(JSON.parse(xhr.responseText)) if xhr.readyState == 4
   xhr.send()
 
+
+checkFriendship = (uid, time, teacher, name, status_id) ->
+  if names[uid]
+    classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
+  else
+    FB.api {method: "friends.getMutualFriends", target_uid: uid}, (mutual)->
+      if mutual.length > 1 # >0 should probably be sufficient though
+        names[uid] = name
+        classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
+  
 
 getSchedule = (uid, cb) ->
   FB.api {
@@ -85,6 +109,7 @@ getSchedule = (uid, cb) ->
     $('progress').value = (++completed)/(friends) if friends
     if completed/friends == 1
       $('progress').style.display = 'none'
+      $('share').style.display = ''
       uploadClasses()
 
 
@@ -95,14 +120,12 @@ uploadClasses = ->
   xhr = new XMLHttpRequest
   xhr.open 'post', '/upload', true
   xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
-  #xhr.onload = ->
-  #  console.log(xhr.responseText)
   xhr.send("data=#{encodeURIComponent(JSON.stringify(dense))}")
 
 handleMessage = (status) ->
   [uid, msg] = [status.uid, status.message]
-  log("#{names[uid]} - #{msg}")
   classes = []
+  
   lines = for line in msg.split /\n|;/
     [(' ' + line + ' ').toLowerCase()
         .replace(/[a-z]+\?/gi, '')
@@ -121,7 +144,13 @@ handleMessage = (status) ->
     parts = line[0].split ' '
     len = parts.length
     len < 8 and !/sched/.test(parts[0])
-  if 5 < items.length
+    
+  for item in items
+    last = item[0].split(' ').slice(-1)[0]
+    if last and last in "you,now,status,is,me,love,truth".split(',')
+      return []
+      
+  if 5 < items.length < 14
     nums = (i[0] for i in items).join('').match(/\d+/g)
     if !nums or nums.length < 3
       items = (["#{c+1} #{i[0]}",i[1]] for i,c in items)
@@ -160,7 +189,7 @@ classify = (name, parts, status) ->
     cls.people.push(uid) 
     cls.el.appendChild(showuser(status))
     
-    current = cls.el.querySelector('span').innerText
+    current = cls.el.querySelector('span').innerHTML.replace(/<.+?>/g, '')
     if name.replace(/^[A-Z]/g,'').length > current.replace(/^[A-Z]/g,'').length and name.length > current.length
       cls.el.querySelector('span').innerHTML = "#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}"
 
@@ -168,13 +197,14 @@ classify = (name, parts, status) ->
     cls.el.style.display = ''  
   [period, teacher]
 
-friends = 0
-getFriends = () ->
+getFriends = (cb) ->
   FB.api '/me/friends', (resp) ->
-    names[friend.id] = friend.name for friend in resp.data
+    direct_friend[friend.id] = names[friend.id] = friend.name for friend in resp.data
+    cb() if cb
     for id, name of names
       friends++
       getSchedule(id)
+      
     
     
 showclass = (name) ->
@@ -182,14 +212,17 @@ showclass = (name) ->
   div.className = 'class'
   div.style.display = 'none'
   div.innerHTML = "<span>#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span><br>"
-  document.body.appendChild(div)
+  $('results').appendChild(div)
   div
     
 showuser = (status) ->
   uid = status.uid
   a = document.createElement('a')
   a.target = '_blank'
-  a.href = 'http://facebook.com/' + uid + '/posts/'+status.status_id
+  if direct_friend[uid] or uid is me.id
+    a.href = 'http://facebook.com/' + uid + '/posts/'+status.status_id
+  else
+    a.href = 'http://facebook.com/' + uid
   div = document.createElement('div')
   div.className = 'user'
   span = document.createElement('span')
