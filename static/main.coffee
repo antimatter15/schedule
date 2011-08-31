@@ -152,8 +152,11 @@ uploadClasses = ->
 handleMessage = (status) ->
   [uid, msg] = [status.uid, status.message]
   classes = []
-  
-  lines = for line in msg.split /\n|;/
+  if !/\n/.test(msg.replace(/^\s+|\s+$/g, ''))
+    split_regex = /\n|;/
+  else
+    split_regex = /\n/
+  lines = for line in msg.split split_regex
     [(' ' + line + ' ').toLowerCase()
         .replace(/[a-z]+\?/gi, '')
         .replace(/[^a-z0-9\s]/gi, ' ')
@@ -169,15 +172,17 @@ handleMessage = (status) ->
         .replace(/^\s+|\s+$/g, ''), line]
   items = filter lines, (line) ->
     parts = line[0].split ' '
+    llen = line[0].length
     len = parts.length
-    len < 8 and !/sched/.test(parts[0])
+    llen > 3 and len < 8 and !/sched/i.test(line[0])
     
   for item in items
     last = item[0].split(' ').slice(-1)[0]
     if last and last in "you,now,status,is,me,love,truth".split(',')
       return []
-      
-  if 5 < items.length < 14
+  
+  if 5 < items.length < 16
+    #console.log(item[0] for item in items) if items.length > 0 
     nums = (i[0] for i in items).join('').match(/\d+/g)
     if !nums or nums.length < 3
       items = (["#{c+1} #{i[0]}",i[1]] for i,c in items)
@@ -209,7 +214,7 @@ classify = (name, parts, status) ->
 
   cls.names.push(name) unless name in cls.names
   
-  cls.el = showclass(name) unless cls.el
+  cls.el = showclass(name, uid, period, teacher) unless cls.el
   unless uid in cls.people
     if uid is me.id
       cls.el.className += ' hasme'
@@ -217,7 +222,7 @@ classify = (name, parts, status) ->
     cls.el.appendChild(showuser(status))
     
     current = cls.el.querySelector('span').innerHTML.replace(/<.+?>/g, '')
-    if name.replace(/^[A-Z]/g,'').length > current.replace(/^[A-Z]/g,'').length and name.length > current.length
+    if name.replace(/^[A-Z]/g,'').length > current.replace(/^[A-Z]/g,'').length #and name.length > current.length
       cls.el.querySelector('span').innerHTML = "#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}"
 
   if cls.people.length > 1
@@ -239,13 +244,27 @@ countmutual = (uid1, uid2) ->
     mutual++ if cls.join('') == other.join('')
   mutual
     
-showclass = (name) ->
+showclass = (name, uid, period, teacher) ->
   div = document.createElement('div')
   div.className = 'class'
   div.style.display = 'none'
-  div.innerHTML = "<div class='classname'><span>#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span></div>"
+  if uid isnt me.id
+    div.innerHTML = "<a style='float:right' href='#expand' onclick='expand_class(this, #{JSON.stringify([period,teacher])});return false'>+</a>"
+  div.innerHTML += "<div class='classname'><span>#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span></div>"
   $('results').appendChild(div)
   div
+  
+@expand_class = (el, arr) ->
+  el.style.display = 'none'
+  [time, teacher] = arr
+  xhr = new XMLHttpRequest
+  xhr.open 'get', "/expand?period=#{time}&teacher=#{teacher}", true
+  xhr.onreadystatechange = ->
+    if xhr.readyState == 4
+      for student in JSON.parse(xhr.responseText)
+        [name, uid, status_id] = student
+        checkFriendship(uid, time, teacher, name, status_id) if uid isnt me.id
+  xhr.send()
     
 showuser = (status) ->
   uid = status.uid

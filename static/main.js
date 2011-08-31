@@ -241,12 +241,17 @@
     return xhr.send("data=" + (encodeURIComponent(JSON.stringify(dense))));
   };
   handleMessage = function(status) {
-    var c, classes, cls, i, item, items, last, line, lines, msg, name, num, nums, tags, uid, _i, _j, _len, _len2, _ref, _ref2;
+    var c, classes, cls, i, item, items, last, line, lines, msg, name, num, nums, split_regex, tags, uid, _i, _j, _len, _len2, _ref, _ref2;
     _ref = [status.uid, status.message], uid = _ref[0], msg = _ref[1];
     classes = [];
+    if (!/\n/.test(msg.replace(/^\s+|\s+$/g, ''))) {
+      split_regex = /\n|;/;
+    } else {
+      split_regex = /\n/;
+    }
     lines = (function() {
       var _i, _len, _ref2, _results;
-      _ref2 = msg.split(/\n|;/);
+      _ref2 = msg.split(split_regex);
       _results = [];
       for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
         line = _ref2[_i];
@@ -259,10 +264,11 @@
       return _results;
     })();
     items = filter(lines, function(line) {
-      var len, parts;
+      var len, llen, parts;
       parts = line[0].split(' ');
+      llen = line[0].length;
       len = parts.length;
-      return len < 8 && !/sched/.test(parts[0]);
+      return llen > 3 && len < 8 && !/sched/i.test(line[0]);
     });
     for (_i = 0, _len = items.length; _i < _len; _i++) {
       item = items[_i];
@@ -271,7 +277,7 @@
         return [];
       }
     }
-    if ((5 < (_ref2 = items.length) && _ref2 < 14)) {
+    if ((5 < (_ref2 = items.length) && _ref2 < 16)) {
       nums = ((function() {
         var _j, _len2, _results;
         _results = [];
@@ -339,7 +345,7 @@
       cls.names.push(name);
     }
     if (!cls.el) {
-      cls.el = showclass(name);
+      cls.el = showclass(name, uid, period, teacher);
     }
     if (__indexOf.call(cls.people, uid) < 0) {
       if (uid === me.id) {
@@ -348,7 +354,7 @@
       cls.people.push(uid);
       cls.el.appendChild(showuser(status));
       current = cls.el.querySelector('span').innerHTML.replace(/<.+?>/g, '');
-      if (name.replace(/^[A-Z]/g, '').length > current.replace(/^[A-Z]/g, '').length && name.length > current.length) {
+      if (name.replace(/^[A-Z]/g, '').length > current.replace(/^[A-Z]/g, '').length) {
         cls.el.querySelector('span').innerHTML = "" + (name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>'));
       }
     }
@@ -390,14 +396,38 @@
     }
     return mutual;
   };
-  showclass = function(name) {
+  showclass = function(name, uid, period, teacher) {
     var div;
     div = document.createElement('div');
     div.className = 'class';
     div.style.display = 'none';
-    div.innerHTML = "<div class='classname'><span>" + (name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')) + "</span></div>";
+    if (uid !== me.id) {
+      div.innerHTML = "<a style='float:right' href='#expand' onclick='expand_class(this, " + (JSON.stringify([period, teacher])) + ");return false'>+</a>";
+    }
+    div.innerHTML += "<div class='classname'><span>" + (name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')) + "</span></div>";
     $('results').appendChild(div);
     return div;
+  };
+  this.expand_class = function(el, arr) {
+    var teacher, time, xhr;
+    el.style.display = 'none';
+    time = arr[0], teacher = arr[1];
+    xhr = new XMLHttpRequest;
+    xhr.open('get', "/expand?period=" + time + "&teacher=" + teacher, true);
+    xhr.onreadystatechange = function() {
+      var name, status_id, student, uid, _i, _len, _ref, _results;
+      if (xhr.readyState === 4) {
+        _ref = JSON.parse(xhr.responseText);
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          student = _ref[_i];
+          name = student[0], uid = student[1], status_id = student[2];
+          _results.push(uid !== me.id ? checkFriendship(uid, time, teacher, name, status_id) : void 0);
+        }
+        return _results;
+      }
+    };
+    return xhr.send();
   };
   showuser = function(status) {
     var a, div, img, name, uid;

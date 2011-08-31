@@ -96,11 +96,28 @@ class SearchHandler(webapp.RequestHandler):
           results[c].append([user.name, uid, user.status_id])
     self.response.out.write(simplejson.dumps(results))
       
-  
+
+class ExpandHandler(webapp.RequestHandler):
+  def get(self):
+    self.response.headers['Content-Type'] = 'application/json'
+    period = self.request.get("period")
+    teacher = self.request.get("teacher")
+    results = []
+    if len(period) is 1:
+      period = "0"+period
+    q = Student.all()
+    q.filter("time >", datetime.datetime.now() - datetime.timedelta(weeks = 4))
+    q.filter("t"+period + " =", teacher)
+    for user in q.fetch(121):
+      uid = user.key().name()
+      results.append([user.name, uid, user.status_id])
+    self.response.out.write(simplejson.dumps(results))
+      
 
 def main():
   application = webapp.WSGIApplication([('/upload', UploadHandler),
-                                        ('/search', SearchHandler)],
+                                        ('/search', SearchHandler),
+                                        ('/expand', ExpandHandler)],
                      debug=True)
   util.run_wsgi_app(application)
 
