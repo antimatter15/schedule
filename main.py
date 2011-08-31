@@ -114,10 +114,16 @@ class ExpandHandler(webapp.RequestHandler):
     self.response.out.write(simplejson.dumps(results))
       
 
+class FlushHandler(webapp.RequestHandler):
+  def get(self):
+    self.response.out.write(str(memcache.flush_all()))
+    
+
 def main():
   application = webapp.WSGIApplication([('/upload', UploadHandler),
                                         ('/search', SearchHandler),
-                                        ('/expand', ExpandHandler)],
+                                        ('/expand', ExpandHandler),
+                                        ('/flush', FlushHandler)],
                      debug=True)
   util.run_wsgi_app(application)
 
