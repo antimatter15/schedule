@@ -8,7 +8,8 @@ completed = 0
 current_status = null
 
 selectors = [
-  'strpos(lower(message), "3") >= 0',
+  'strpos(lower(message), "4") >= 0',
+  'strpos(lower(message), "5") >= 0',
   'strlen(message) >= 100'
 ]
 
@@ -30,28 +31,41 @@ FB.init {
 }
 
 progress_value = 0
-anim_state = 0
+anim_state = -1
 
 progressAnimation = ->
-  if progress_value is -1
+  if progress_value is 0
+    $('progress_val').style.width = (anim_state -= 0.5) + '%'
+    if anim_state < 0
+      anim_state = -1
+      $('progress_val').style.left = '0'
+      $('progress_val').style.right = ''
+      $('progress_val').style.width = '0'
+      return
+    $('progress_val').style.left = ''
+    $('progress_val').style.right = '0'
+    $('progress_val').style.marginLeft = 'auto'
+    setTimeout progressAnimation, 10
+  else if progress_value is -1
+    $('progress_val').style.marginLeft = ''
     $('progress_val').style.width = '10%'
-    $('progress_val').style.left = (((anim_state++) % 110) - 10) + '%'
-    setTimeout progressAnimation, 20
-  else
+    $('progress_val').style.left = (((anim_state += 0.5) % 110) - 10) + '%'
+    setTimeout progressAnimation, 10
+  else 
     $('progress_val').style.left = '0'
     anim_state = -1
     
 setProgress = (val) ->
   progress_value = val
-  if anim_state = -1
+  $('progress').style.display = ''
+  if anim_state == -1 and val <= 0
+    if val == 0
+      anim_state = 100
     progressAnimation()
-  if val == 0
-    #$('progress').style.display = 'none'
-    $('progress_val').style.width = '0'
   else
-    $('progress').style.display = ''
-    if val isnt -1
-      $('progress_val').style.width = 100 * val + '%'
+    anim_state = -1
+    $('progress_val').style.marginLeft = ''
+    $('progress_val').style.width = 100 * val + '%'
 
 
 @login = ->
@@ -63,6 +77,11 @@ setProgress = (val) ->
       @me = resp      
       names[me.id] = me.name
       getSchedule me.id, (classes) ->
+        me.classes = {}
+        if @people[me.id]
+          for [time, teacher] in @people[me.id].classes
+            me.classes[time+teacher] = 1 
+        
         [cb1, cb2] = race processSearch
         if classes.length > 0
           searchClasses me.id, cb1
@@ -91,10 +110,13 @@ race = (cb) ->
 processSearch = (json) ->
   for cls, classes of json
     [time, teacher] = cls.split(";")
+    strangers = {}
     for student in classes
       [name, uid, status_id] = student
+      strangers[uid] = 1
       checkFriendship(uid, time, teacher, name, status_id) if uid isnt me.id
 
+    
 searchClasses = (uid, process) ->
   str = JSON.stringify(cls.join(';') for cls in @people[uid].classes)
   xhr = new XMLHttpRequest
@@ -105,14 +127,16 @@ searchClasses = (uid, process) ->
 
 
 checkFriendship = (uid, time, teacher, name, status_id) ->
+  @people[uid] = {classes: []} unless @people[uid]
+  @people[uid].classes.push([time, teacher]) 
   if names[uid]
     classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
   else
+    names[uid] = name
     FB.api {method: "friends.getMutualFriends", target_uid: uid}, (mutual)->
       if mutual.length > 1 # >0 should probably be sufficient though
-        names[uid] = name
-        classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
-  
+        classify("X", [time, teacher], {name, uid, status_id, message: ''})
+        showMutualMessage uid
 
 getSchedule = (uid, cb) ->
   FB.api {
@@ -130,7 +154,7 @@ getSchedule = (uid, cb) ->
         stime = status.time
     if classes.length > 0
       @people[uid] = {time: stime, status_id: sid, classes, uid}
-    
+      showMutualMessage uid
     cb(classes) if cb
     if friends
       setProgress (++completed)/friends
@@ -163,11 +187,11 @@ handleMessage = (status) ->
         .replace(/[a-z](\d+)/i, '$1')
         .replace(/(\d+)(st|nd|th|rd)/i, ' $1 ')
         .replace(/\s+/g, ' ')
+        .replace(/\s[a-z]\s/g, ' ')
         .replace(/^\s+|\s+$/g, '')
         .replace(/\s(i+)\s/g, (a,b) -> " #{b.length} ")
         .replace(/\s\d+(\s|$)/g, ' ')
         .replace(/([a-z])\d/g, ' $1 ')
-        .replace(/\s[a-z]\s/g, ' ')
         .replace(/(\d+)([a-z])/i, '$1 $2')
         .replace(/^\s+|\s+$/g, ''), line]
   items = filter lines, (line) ->
@@ -181,7 +205,7 @@ handleMessage = (status) ->
     if last and last in "you,now,status,is,me,love,truth".split(',')
       return []
   
-  if 5 < items.length < 16
+  if 3 < items.length < 16
     #console.log(item[0] for item in items) if items.length > 0 
     nums = (i[0] for i in items).join('').match(/\d+/g)
     if !nums or nums.length < 3
@@ -243,7 +267,27 @@ countmutual = (uid1, uid2) ->
     other = @people[uid2].classes[idx]
     mutual++ if cls.join('') == other.join('')
   mutual
-    
+
+showMutualCount = ->
+  for [time, teacher] in @people[@me.id].classes
+    for uid in @times[time][teacher].people
+      if uid isnt me.id
+        showMutualMessage(uid)
+
+showMutualMessage = (uid, classes = @people[uid].classes) ->
+  return if uid is me.id
+  count = 0
+  for [time, teacher] in classes
+    if me.classes[time+teacher]
+      count++
+  if count > 1
+    for el in document.getElementsByName('u'+uid)
+      if !el.added_count
+        el.added_count = true
+        if el != el.parentNode.firstChild.nextSibling
+          el.parentNode.insertBefore(el, el.parentNode.firstChild.nextSibling.nextSibling)
+        el.getElementsByTagName('div')[1].innerHTML += "<br><span style='font-size:xx-small'>#{count} classes with you</span>"
+
 showclass = (name, uid, period, teacher) ->
   div = document.createElement('div')
   div.className = 'class'
@@ -270,6 +314,7 @@ showuser = (status) ->
   uid = status.uid
   a = document.createElement('a')
   a.target = '_blank'
+  a.name = "u"+status.uid
   if direct_friend[uid] or uid is me.id
     a.href = 'http://facebook.com/' + uid + '/posts/'+status.status_id
   else

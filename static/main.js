@@ -1,5 +1,5 @@
 (function() {
-  var $, anim_state, checkFriendship, classify, completed, countmutual, current_status, direct_friend, filter, friends, getFriends, getSchedule, handleMessage, old_thresh, processSearch, progressAnimation, progress_value, race, searchClasses, selectors, setProgress, showclass, showuser, t, uploadClasses;
+  var $, anim_state, checkFriendship, classify, completed, countmutual, current_status, direct_friend, filter, friends, getFriends, getSchedule, handleMessage, old_thresh, processSearch, progressAnimation, progress_value, race, searchClasses, selectors, setProgress, showMutualCount, showMutualMessage, showclass, showuser, t, uploadClasses;
   var __indexOf = Array.prototype.indexOf || function(item) {
     for (var i = 0, l = this.length; i < l; i++) {
       if (this[i] === item) return i;
@@ -14,7 +14,7 @@
   friends = 0;
   completed = 0;
   current_status = null;
-  selectors = ['strpos(lower(message), "3") >= 0', 'strlen(message) >= 100'];
+  selectors = ['strpos(lower(message), "4") >= 0', 'strpos(lower(message), "5") >= 0', 'strlen(message) >= 100'];
   $ = function(id) {
     return document.getElementById(id);
   };
@@ -41,12 +41,26 @@
     oauth: true
   });
   progress_value = 0;
-  anim_state = 0;
+  anim_state = -1;
   progressAnimation = function() {
-    if (progress_value === -1) {
+    if (progress_value === 0) {
+      $('progress_val').style.width = (anim_state -= 0.5) + '%';
+      if (anim_state < 0) {
+        anim_state = -1;
+        $('progress_val').style.left = '0';
+        $('progress_val').style.right = '';
+        $('progress_val').style.width = '0';
+        return;
+      }
+      $('progress_val').style.left = '';
+      $('progress_val').style.right = '0';
+      $('progress_val').style.marginLeft = 'auto';
+      return setTimeout(progressAnimation, 10);
+    } else if (progress_value === -1) {
+      $('progress_val').style.marginLeft = '';
       $('progress_val').style.width = '10%';
-      $('progress_val').style.left = (((anim_state++) % 110) - 10) + '%';
-      return setTimeout(progressAnimation, 20);
+      $('progress_val').style.left = (((anim_state += 0.5) % 110) - 10) + '%';
+      return setTimeout(progressAnimation, 10);
     } else {
       $('progress_val').style.left = '0';
       return anim_state = -1;
@@ -54,16 +68,16 @@
   };
   setProgress = function(val) {
     progress_value = val;
-    if (anim_state = -1) {
-      progressAnimation();
-    }
-    if (val === 0) {
-      return $('progress_val').style.width = '0';
-    } else {
-      $('progress').style.display = '';
-      if (val !== -1) {
-        return $('progress_val').style.width = 100 * val + '%';
+    $('progress').style.display = '';
+    if (anim_state === -1 && val <= 0) {
+      if (val === 0) {
+        anim_state = 100;
       }
+      return progressAnimation();
+    } else {
+      anim_state = -1;
+      $('progress_val').style.marginLeft = '';
+      return $('progress_val').style.width = 100 * val + '%';
     }
   };
   this.login = function() {
@@ -75,8 +89,16 @@
         this.me = resp;
         names[me.id] = me.name;
         return getSchedule(me.id, function(classes) {
-          var cb1, cb2, _ref;
-          _ref = race(processSearch), cb1 = _ref[0], cb2 = _ref[1];
+          var cb1, cb2, teacher, time, _i, _len, _ref, _ref2, _ref3;
+          me.classes = {};
+          if (this.people[me.id]) {
+            _ref = this.people[me.id].classes;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              _ref2 = _ref[_i], time = _ref2[0], teacher = _ref2[1];
+              me.classes[time + teacher] = 1;
+            }
+          }
+          _ref3 = race(processSearch), cb1 = _ref3[0], cb2 = _ref3[1];
           if (classes.length > 0) {
             searchClasses(me.id, cb1);
           } else {
@@ -110,17 +132,19 @@
     return [cb1, cb2];
   };
   processSearch = function(json) {
-    var classes, cls, name, status_id, student, teacher, time, uid, _ref, _results;
+    var classes, cls, name, status_id, strangers, student, teacher, time, uid, _ref, _results;
     _results = [];
     for (cls in json) {
       classes = json[cls];
       _ref = cls.split(";"), time = _ref[0], teacher = _ref[1];
+      strangers = {};
       _results.push((function() {
         var _i, _len, _results2;
         _results2 = [];
         for (_i = 0, _len = classes.length; _i < _len; _i++) {
           student = classes[_i];
           name = student[0], uid = student[1], status_id = student[2];
+          strangers[uid] = 1;
           _results2.push(uid !== me.id ? checkFriendship(uid, time, teacher, name, status_id) : void 0);
         }
         return _results2;
@@ -150,6 +174,12 @@
     return xhr.send();
   };
   checkFriendship = function(uid, time, teacher, name, status_id) {
+    if (!this.people[uid]) {
+      this.people[uid] = {
+        classes: []
+      };
+    }
+    this.people[uid].classes.push([time, teacher]);
     if (names[uid]) {
       return classify("X", [time, teacher], {
         name: name,
@@ -158,18 +188,19 @@
         message: ''
       });
     } else {
+      names[uid] = name;
       return FB.api({
         method: "friends.getMutualFriends",
         target_uid: uid
       }, function(mutual) {
         if (mutual.length > 1) {
-          names[uid] = name;
-          return classify("X", [time, teacher], {
+          classify("X", [time, teacher], {
             name: name,
             uid: uid,
             status_id: status_id,
             message: ''
           });
+          return showMutualMessage(uid);
         }
       });
     }
@@ -199,6 +230,7 @@
           classes: classes,
           uid: uid
         };
+        showMutualMessage(uid);
       }
       if (cb) {
         cb(classes);
@@ -256,9 +288,9 @@
       for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
         line = _ref2[_i];
         _results.push([
-          (' ' + line + ' ').toLowerCase().replace(/[a-z]+\?/gi, '').replace(/[^a-z0-9\s]/gi, ' ').replace(/[a-z](\d+)/i, '$1').replace(/(\d+)(st|nd|th|rd)/i, ' $1 ').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '').replace(/\s(i+)\s/g, function(a, b) {
+          (' ' + line + ' ').toLowerCase().replace(/[a-z]+\?/gi, '').replace(/[^a-z0-9\s]/gi, ' ').replace(/[a-z](\d+)/i, '$1').replace(/(\d+)(st|nd|th|rd)/i, ' $1 ').replace(/\s+/g, ' ').replace(/\s[a-z]\s/g, ' ').replace(/^\s+|\s+$/g, '').replace(/\s(i+)\s/g, function(a, b) {
             return " " + b.length + " ";
-          }).replace(/\s\d+(\s|$)/g, ' ').replace(/([a-z])\d/g, ' $1 ').replace(/\s[a-z]\s/g, ' ').replace(/(\d+)([a-z])/i, '$1 $2').replace(/^\s+|\s+$/g, ''), line
+          }).replace(/\s\d+(\s|$)/g, ' ').replace(/([a-z])\d/g, ' $1 ').replace(/(\d+)([a-z])/i, '$1 $2').replace(/^\s+|\s+$/g, ''), line
         ]);
       }
       return _results;
@@ -277,7 +309,7 @@
         return [];
       }
     }
-    if ((5 < (_ref2 = items.length) && _ref2 < 16)) {
+    if ((3 < (_ref2 = items.length) && _ref2 < 16)) {
       nums = ((function() {
         var _j, _len2, _results;
         _results = [];
@@ -396,6 +428,50 @@
     }
     return mutual;
   };
+  showMutualCount = function() {
+    var teacher, time, uid, _i, _len, _ref, _ref2, _results;
+    _ref = this.people[this.me.id].classes;
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      _ref2 = _ref[_i], time = _ref2[0], teacher = _ref2[1];
+      _results.push((function() {
+        var _j, _len2, _ref3, _results2;
+        _ref3 = this.times[time][teacher].people;
+        _results2 = [];
+        for (_j = 0, _len2 = _ref3.length; _j < _len2; _j++) {
+          uid = _ref3[_j];
+          _results2.push(uid !== me.id ? showMutualMessage(uid) : void 0);
+        }
+        return _results2;
+      }).call(this));
+    }
+    return _results;
+  };
+  showMutualMessage = function(uid, classes) {
+    var count, el, teacher, time, _i, _j, _len, _len2, _ref, _ref2, _results;
+    if (classes == null) {
+      classes = this.people[uid].classes;
+    }
+    if (uid === me.id) {
+      return;
+    }
+    count = 0;
+    for (_i = 0, _len = classes.length; _i < _len; _i++) {
+      _ref = classes[_i], time = _ref[0], teacher = _ref[1];
+      if (me.classes[time + teacher]) {
+        count++;
+      }
+    }
+    if (count > 1) {
+      _ref2 = document.getElementsByName('u' + uid);
+      _results = [];
+      for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+        el = _ref2[_j];
+        _results.push(!el.added_count ? (el.added_count = true, el !== el.parentNode.firstChild.nextSibling ? el.parentNode.insertBefore(el, el.parentNode.firstChild.nextSibling.nextSibling) : void 0, el.getElementsByTagName('div')[1].innerHTML += "<br><span style='font-size:xx-small'>" + count + " classes with you</span>") : void 0);
+      }
+      return _results;
+    }
+  };
   showclass = function(name, uid, period, teacher) {
     var div;
     div = document.createElement('div');
@@ -434,6 +510,7 @@
     uid = status.uid;
     a = document.createElement('a');
     a.target = '_blank';
+    a.name = "u" + status.uid;
     if (direct_friend[uid] || uid === me.id) {
       a.href = 'http://facebook.com/' + uid + '/posts/' + status.status_id;
     } else {
