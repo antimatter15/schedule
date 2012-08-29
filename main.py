@@ -11,6 +11,7 @@ import datetime
 class Student(db.Model):
   name = db.StringProperty()
   status_id = db.StringProperty()
+  status = db.TextProperty()
   time = db.DateProperty()
   t00 = db.StringProperty() #for some cool school that has a zeroeth period
   t01 = db.StringProperty()
@@ -32,46 +33,47 @@ class UploadHandler(webapp.RequestHandler):
   def post(self):
     users = simplejson.loads(self.request.get('data'))
     for user in users:
-      [name, uid, status_id, time, classes] = user
+      [name, uid, status_id, time, classes, status] = user
       if memcache.get(uid) is None:
         memcache.add(uid, 1, 60 * 60 * 24 * 30)
         student = Student.get_by_key_name(uid)
         if student is None:
           student = Student(key_name = uid)
-          student.name = name
-          student.status_id = status_id
-          student.time = datetime.date.fromtimestamp(time)
-          for c in classes:
-            [period, teacher] = c.split(";", 1)
-            period = int(period)
-            if period is 0:
-              student.t00 = teacher
-            elif period is 1:
-              student.t01 = teacher
-            elif period is 2:
-              student.t02 = teacher
-            elif period is 3:
-              student.t03 = teacher
-            elif period is 4:
-              student.t04 = teacher
-            elif period is 5:
-              student.t05 = teacher
-            elif period is 6:
-              student.t06 = teacher
-            elif period is 7:
-              student.t07 = teacher
-            elif period is 8:
-              student.t08 = teacher
-            elif period is 9:
-              student.t09 = teacher                                                            
-            elif period is 10:
-              student.t10 = teacher          
-            elif period is 11:
-              student.t11 = teacher          
-            elif period is 12:
-              student.t12 = teacher          
-            elif period is 13:
-              student.t13 = teacher
+        student.name = name
+        student.status = status
+        student.status_id = status_id
+        student.time = datetime.date.fromtimestamp(time)
+        for c in classes:
+          [period, teacher] = c.split(";", 1)
+          period = int(period)
+          if period is 0:
+            student.t00 = teacher
+          elif period is 1:
+            student.t01 = teacher
+          elif period is 2:
+            student.t02 = teacher
+          elif period is 3:
+            student.t03 = teacher
+          elif period is 4:
+            student.t04 = teacher
+          elif period is 5:
+            student.t05 = teacher
+          elif period is 6:
+            student.t06 = teacher
+          elif period is 7:
+            student.t07 = teacher
+          elif period is 8:
+            student.t08 = teacher
+          elif period is 9:
+            student.t09 = teacher                                                            
+          elif period is 10:
+            student.t10 = teacher          
+          elif period is 11:
+            student.t11 = teacher          
+          elif period is 12:
+            student.t12 = teacher          
+          elif period is 13:
+            student.t13 = teacher
         student.put()
         self.response.out.write(uid+",")
 
@@ -113,6 +115,25 @@ class ExpandHandler(webapp.RequestHandler):
       results.append([user.name, uid, user.status_id])
     self.response.out.write(simplejson.dumps(results))
       
+class LookupHandler(webapp.RequestHandler):
+  def get(self):
+    self.response.headers['Content-Type'] = 'application/json'
+    uid = self.request.get("uid")
+    student = Student.get_by_key_name(uid)
+    if student is None:
+      self.response.out.write('{}')
+    else:
+      self.response.out.write(simplejson.dumps({
+        "name": student.name,
+        "status_id": student.status_id,
+        "status": student.status,
+        "t00": student.t00, "t01": student.t01, "t02": student.t02, "t03": student.t03,
+        "t04": student.t04, "t05": student.t05, "t06": student.t06, "t07": student.t07,
+        "t08": student.t08, "t09": student.t09, "t10": student.t10, "t11": student.t11,
+        "t12": student.t12, "t13": student.t13
+      }))
+      
+
 
 class FlushHandler(webapp.RequestHandler):
   def get(self):
@@ -123,6 +144,7 @@ def main():
   application = webapp.WSGIApplication([('/upload', UploadHandler),
                                         ('/search', SearchHandler),
                                         ('/expand', ExpandHandler),
+                                        ('/lookup', LookupHandler),
                                         ('/flush', FlushHandler)],
                      debug=True)
   util.run_wsgi_app(application)

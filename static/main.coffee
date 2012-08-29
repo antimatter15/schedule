@@ -154,7 +154,7 @@ getSchedule = (uid, cb) ->
         sid = status.status_id
         stime = status.time
     if classes.length > 0
-      @people[uid] = {time: stime, status_id: sid, classes, uid}
+      @people[uid] = {time: stime, status_id: sid, classes, uid, message: status.message}
       showMutualMessage uid
     cb(classes) if cb
     if friends
@@ -168,7 +168,7 @@ getSchedule = (uid, cb) ->
 
 uploadClasses = ->
   dense = for uid, friend of people
-    [names[uid], uid, friend.status_id, friend.time-0, cls.join(';') for cls in friend.classes]
+    [names[uid], uid, friend.status_id, friend.time-0, cls.join(';') for cls in friend.classes, friend.message]
   xhr = new XMLHttpRequest
   xhr.open 'post', '/upload', true
   xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
@@ -314,6 +314,32 @@ showclass = (name, uid, period, teacher) ->
         checkFriendship(uid, time, teacher, name, status_id) if uid isnt me.id
   xhr.send()
     
+
+@expand_user = (uid) ->
+  xhr = new XMLHttpRequest
+  xhr.open 'get', "/lookup?uid=#{uid}", true
+  xhr.onreadystatechange = ->
+    if xhr.readyState == 4
+      student = JSON.parse(xhr.responseText)
+      if student.name
+        student.uid = uid
+        showsched(student)
+  xhr.send()
+
+
+showsched = (student) ->
+  div = document.createElement('div')
+  div.className = 'class'
+  div.innerHTML = "<div class='classname'>#{student.name.replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
+  img = new Image()
+  img.src = "https://graph.facebook.com/#{student.uid}/picture?type=square"
+  div.appendChild(img)
+  list = document.createElement('div')
+  list.className = 'list'
+  list.innerText = student.status
+  div.appendChild(list)
+  $('results').appendChild(div)
+  
 showuser = (status) ->
   uid = status.uid
   a = document.createElement('a')
