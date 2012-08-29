@@ -79,7 +79,6 @@
   }
   
   #submit {
-    margin-bottom: 10px;
     padding: 10px;
     background-color: #EFC78B;
   }
@@ -100,8 +99,26 @@
   .subtext {
     font-size: x-small;
   }
+
+  #shareplz {
+    padding: 10px;
+    background-color: #CAD3DF;
+    margin-bottom: 10px;
+  }
+
+
+  #submit a, #shareplz a {
+    text-decoration: none !important;
+    color: #00E !important;
+
+  }
 </style>
 <meta name="description" content="Instantly compare your class schedule with your friends for coming school year" >
+<meta property="og:image" content="https://schedule-compare.appspot.com/static/schedule.png">
+<meta property="og:url" content="http://schedule-compare.appspot.com/">
+<meta property="og:description" content="Instantly compare your class schedule with your friends for coming school year">
+<meta property="fb:admins" content="1686802955" />
+<meta property="fb:app_id" content="282025336884" /> 
 </head>
 <body>
 <div id="fb-root"></div>
@@ -110,9 +127,17 @@
 <div id="submit" style="display:none">
   It looks like <b>you don't have your schedule posted</b> as a status using the proper format. Go to <a href="http://facebook.com/">Facebook</a>, and <b>post your schedule</b> in the format of "[Period <b>Number</b>] [<b>Class</b> Name] [<b>Teacher</b> Name]" on different lines. Once you're done, come back here.
 </div>
+
+<div id="shareplz" style="display:none">
+  Please <a href="https://www.facebook.com/dialog/feed?app_id=282025336884&link=https://schedule-compare.appspot.com/&picture=https://schedule-compare.appspot.com/static/schedule.png&name=Schedule Compare&caption=https://schedule-compare.appspot.com/&description=Instantly compare your class schedule with your friends for coming school year&redirect_uri=https://schedule-compare.appspot.com/
+" onclick="postToFeed();return false">share this app on Facebook</a>. We also compare your schedule against other people who have used the app, so when more people use the app, the results become more complete and includes more people who aren't necessarily friends on Facebook.
+</div>
+
+
 <div id="share" style="margin-left: 10px;position:absolute;">
 <fb:like href="http://schedule-compare.appspot.com/" send="true" width="450" show_faces="false" font=""></fb:like>
 </div>
+
 
 <div id="header" style="top:0;left:0;">
 <center>
@@ -134,7 +159,7 @@
     <div style="width:120px;display:inline;background: url(/static/schedule.png) no-repeat;margin:20px;height:121px;float:left"></div>
     <div id="content">
       <h1>Find out who is in your classes</h1>
-      <b>Click here</b> and we'll automatically scan the statuses of you and all your friends and show you a list of classes you have together.
+      <b>Click here</b> and we'll automatically scan the statuses of all your friends to build a list of people in your classes.
     </div>
     </div>
   </a>

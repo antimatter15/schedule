@@ -70,7 +70,8 @@ setProgress = (val) ->
 
 @login = ->
   $('buttonparent').style.display = 'none'
-  $('share').style.display = 'none'
+  # $('share').style.display = 'none'
+  $('shareplz').style.display = ''
   setProgress -1
   FB.login (resp) ->
     FB.api '/me', (resp) ->
@@ -202,7 +203,7 @@ handleMessage = (status) ->
     
   for item in items
     last = item[0].split(' ').slice(-1)[0]
-    if last and last in "you,now,status,is,me,love,truth".split(',')
+    if last and last in "you,now,status,is,me,love,truth,go,yet,like,teeth,time,fine,also,beautiful,tomorrow,awesome,bible".split(',')
       return []
   
   if 3 < items.length < 16
@@ -220,7 +221,10 @@ handleMessage = (status) ->
         tags = num[0] + ' ' + tags
         cls = classify(item[1], tags.split(' '), status)
         classes.push(cls) if cls
-  classes
+  if classes.length > 2
+    classes
+  else
+    []
 
 classify = (name, parts, status) ->
   uid = status.uid
@@ -330,3 +334,11 @@ showuser = (status) ->
   a.appendChild div
   a
     
+@postToFeed = ->
+  FB.ui {
+    method: 'feed',
+    link: 'https://schedule-compare.appspot.com/',
+    picture: 'https://schedule-compare.appspot.com/static/schedule.png',
+    caption: 'https://schedule-compare.appspot.com/',
+    description: 'Instantly compare your class schedule with your friends for coming school year'
+  }

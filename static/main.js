@@ -97,7 +97,7 @@ setProgress = function(val) {
 
 this.login = function() {
   $('buttonparent').style.display = 'none';
-  $('share').style.display = 'none';
+  $('shareplz').style.display = '';
   setProgress(-1);
   return FB.login(function(resp) {
     return FB.api('/me', function(resp) {
@@ -331,7 +331,7 @@ handleMessage = function(status) {
   for (_i = 0, _len = items.length; _i < _len; _i++) {
     item = items[_i];
     last = item[0].split(' ').slice(-1)[0];
-    if (last && __indexOf.call("you,now,status,is,me,love,truth".split(','), last) >= 0) {
+    if (last && __indexOf.call("you,now,status,is,me,love,truth,go,yet,like,teeth,time,fine,also,beautiful,tomorrow,awesome,bible".split(','), last) >= 0) {
       return [];
     }
   }
@@ -370,7 +370,11 @@ handleMessage = function(status) {
       }
     }
   }
-  return classes;
+  if (classes.length > 2) {
+    return classes;
+  } else {
+    return [];
+  }
 };
 
 classify = function(name, parts, status) {
@@ -576,4 +580,14 @@ showuser = function(status) {
   div.appendChild(name);
   a.appendChild(div);
   return a;
+};
+
+this.postToFeed = function() {
+  return FB.ui({
+    method: 'feed',
+    link: 'https://schedule-compare.appspot.com/',
+    picture: 'https://schedule-compare.appspot.com/static/schedule.png',
+    caption: 'https://schedule-compare.appspot.com/',
+    description: 'Instantly compare your class schedule with your friends for coming school year'
+  });
 };
