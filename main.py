@@ -42,7 +42,7 @@ class UploadHandler(webapp.RequestHandler):
         student.name = name
         student.status = status
         student.status_id = status_id
-        student.time = datetime.date.fromtimestamp(time)
+        student.time = datetime.date.fromtimestamp(float(time))
         for c in classes:
           [period, teacher] = c.split(";", 1)
           period = int(period)

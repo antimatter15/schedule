@@ -147,14 +147,16 @@ getSchedule = (uid, cb) ->
     classes = []
     stime = 0
     sid = 0
+    msg = ""
     for status in resp
       temp = handleMessage(status)
       if temp.length > 0
         classes = classes.concat(temp) 
         sid = status.status_id
         stime = status.time
+        msg = status.message
     if classes.length > 0
-      @people[uid] = {time: stime, status_id: sid, classes, uid, message: status.message}
+      @people[uid] = {time: stime, status_id: sid, classes, uid, message: msg}
       showMutualMessage uid
     cb(classes) if cb
     if friends
@@ -167,7 +169,7 @@ getSchedule = (uid, cb) ->
 
 
 uploadClasses = ->
-  dense = for uid, friend of people
+  dense = for uid, friend of people when direct_friend[uid]
     [names[uid], uid, friend.status_id, friend.time-0, cls.join(';') for cls in friend.classes, friend.message]
   xhr = new XMLHttpRequest
   xhr.open 'post', '/upload', true
@@ -246,6 +248,8 @@ classify = (name, parts, status) ->
   unless uid in cls.people
     if uid is me.id
       cls.el.className += ' hasme'
+      cls.el.style.display = ''
+
     cls.people.push(uid) 
     cls.el.appendChild(showuser(status))
     
@@ -314,8 +318,13 @@ showclass = (name, uid, period, teacher) ->
         checkFriendship(uid, time, teacher, name, status_id) if uid isnt me.id
   xhr.send()
     
+@remove_popups = ->
+  students = document.getElementsByClassName('student')
+  while students.length > 0
+    students[0].parentNode.removeChild(students[0]) if students[0]?.parentNode
 
-@expand_user = (uid) ->
+
+@expand_user = (uid, el) ->
   xhr = new XMLHttpRequest
   xhr.open 'get', "/lookup?uid=#{uid}", true
   xhr.onreadystatechange = ->
@@ -323,28 +332,60 @@ showclass = (name, uid, period, teacher) ->
       student = JSON.parse(xhr.responseText)
       if student.name
         student.uid = uid
-        showsched(student)
+        showsched(student, el)
   xhr.send()
 
 
-showsched = (student) ->
+showsched = (student, el) ->
   div = document.createElement('div')
-  div.className = 'class'
-  div.innerHTML = "<div class='classname'>#{student.name.replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
+  div.className = 'student'
+
+  div.innerHTML = "<a style='float:right' href='#expand' onclick='remove_popups();return false'>x</a><div class='arrow'></div><div class='classname'>#{student.name.replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
+  
+  if el
+    div.style.position = 'absolute'
+    [left, top] = find_position(el)
+    left += 60 #el.offsetWidth
+    top -= 20
+    div.style.top = top + 'px'
+    div.style.left = left + 'px'
+  
   img = new Image()
   img.src = "https://graph.facebook.com/#{student.uid}/picture?type=square"
-  div.appendChild(img)
+  link = document.createElement('a')
+  link.appendChild(img)
+  
+  if direct_friend[student.uid] or student.uid is me.id
+    link.href = 'http://facebook.com/' + student.uid + '/posts/' + student.status_id
+  else
+    link.href = 'http://facebook.com/' + student.uid
+
+  div.appendChild(link)
   list = document.createElement('div')
   list.className = 'list'
   list.innerText = student.status
   div.appendChild(list)
   $('results').appendChild(div)
-  
+
+
+last_popup = ''
+
 showuser = (status) ->
   uid = status.uid
   a = document.createElement('a')
   a.target = '_blank'
   a.name = "u"+status.uid
+  link_id = Math.random()
+  a.onclick = (e) ->
+    unless e.ctrlKey or e.shiftKey
+      remove_popups()
+      if last_popup isnt link_id
+        expand_user(status.uid, a)
+        last_popup = link_id
+      else
+        last_popup = null
+      e.preventDefault()
+
   if direct_friend[uid] or uid is me.id
     a.href = 'http://facebook.com/' + uid + '/posts/'+status.status_id
   else
@@ -368,3 +409,15 @@ showuser = (status) ->
     caption: 'https://schedule-compare.appspot.com/',
     description: 'Instantly compare your class schedule with your friends for coming school year'
   }
+
+
+find_position = `function findPos(obj){
+  var curleft = curtop = 0;
+  if (obj.offsetParent) {
+    do {
+      curleft += obj.offsetLeft;
+      curtop += obj.offsetTop;
+    } while (obj = obj.offsetParent);
+  }
+  return [curleft,curtop];
+}`

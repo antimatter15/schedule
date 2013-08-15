@@ -40,7 +40,7 @@
     padding: 0;
   }
   
-  .class a {
+  .class a, .student a {
     text-decoration: none;
     color: black;
   }
@@ -119,13 +119,33 @@
     margin-left: 10px;
     background: #E6E7DD;
     padding: 5px;
+    width: 200px;
     font-size: 80%;
   }
+
+  .student {
+    background-color: #CFBCBC;
+    padding: 7px;
+    margin: 5px;
+    display: inline-block;
+    width: 270px;
+  }
+  div.arrow { 
+    position: absolute; 
+    top: 20px; 
+    left: -40px; 
+    border-top: 20px solid transparent; 
+    border-bottom: 20px solid transparent; 
+    border-right: 20px solid #CFBCBC; 
+    border-left: 20px solid transparent; 
+    pointer-events: none;
+  }
+
 </style>
-<meta name="description" content="Instantly compare your class schedule with your friends for coming school year" >
+<meta name="description" content="Instantly compare your class schedule with your friends for the coming school year" >
 <meta property="og:image" content="https://schedule-compare.appspot.com/static/schedule.png">
 <meta property="og:url" content="http://schedule-compare.appspot.com/">
-<meta property="og:description" content="Instantly compare your class schedule with your friends for coming school year">
+<meta property="og:description" content="Instantly compare your class schedule with your friends for the coming school year">
 <meta property="og:title" content="Schedule Compare">
 <meta property="fb:admins" content="1686802955" />
 <meta property="fb:app_id" content="282025336884" /> 
@@ -141,12 +161,16 @@
 
 <div id="shareplz" style="display:none">
   Please <a href="https://www.facebook.com/dialog/feed?app_id=282025336884&link=https://schedule-compare.appspot.com/&picture=https://schedule-compare.appspot.com/static/schedule.png&name=Schedule Compare&caption=https://schedule-compare.appspot.com/&description=Instantly compare your class schedule with your friends for coming school year&redirect_uri=https://schedule-compare.appspot.com/
-" onclick="postToFeed();return false">share this app on Facebook</a>. We also compare your schedule against other people who have used the app, so when more people use the app, the results become more complete and includes more people who aren't necessarily friends on Facebook.
+" onclick="postToFeed();return false">share this app on Facebook (click here)</a> and press the Like button right below. We also compare your schedule against other people who have used the app, so when more people use the app, the results become more complete and includes more people who aren't necessarily friends on Facebook.
 </div>
 
 
-<div id="share" style="margin-left: 10px;position:absolute;">
-<fb:like href="http://schedule-compare.appspot.com/" send="true" width="450" show_faces="false" font=""></fb:like>
+
+<div id="share" style="position:absolute;width:100%">
+<div style="float:right;font-size:80%;margin-right:10px;margin-top:2px">Made by Kevin Kwok</div>
+
+<fb:like style="margin-left: 10px;" href="http://schedule-compare.appspot.com/" send="true" width="450" show_faces="false" font=""></fb:like>
+
 </div>
 
 
@@ -170,14 +194,16 @@
     <div style="width:120px;display:inline;background: url(/static/schedule.png) no-repeat;margin:20px;height:121px;float:left"></div>
     <div id="content">
       <h1>Find out who is in your classes</h1>
-      <b>Click here</b> and we'll automatically scan the statuses of all your friends to build a list of people in your classes.
+      <b>Click here</b> and we'll automatically scan the statuses of all your friends to build a list of people in your classes. 
     </div>
+      
     </div>
   </a>
+
 </div>
 
 <script src="//connect.facebook.net/en_US/all.js"></script>
-<script src="main.js"></script>
+<script src="/static/main.js?833"></script>
 <script src="/static/json2.min.js"></script>
 </body>
 </html>
