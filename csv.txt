@@ -1,5 +1,0 @@
-.mode csv
-.header on
-.output result.csv
-SELECT * FROM result;
-.exit

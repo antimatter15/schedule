@@ -1,0 +1,52 @@
+python_preamble:
+- import: base64
+- import: re
+- import: google.appengine.ext.bulkload.transform
+- import: google.appengine.ext.bulkload.bulkloader_wizard
+- import: google.appengine.ext.db
+- import: google.appengine.api.datastore
+- import: google.appengine.api.users
+
+transformers:
+- kind: Student
+  connector: csv
+  connector_options:
+    encoding: utf-8
+    columns: from_header
+  property_map:
+    - property: name
+      external_name: name
+    - property: status
+      external_name: status
+    - property: status_id
+      external_name: status_id
+    - property: time
+      external_name: time
+    - property: t00
+      external_name: t00
+    - property: t01
+      external_name: t01
+    - property: t02
+      external_name: t02
+    - property: t03
+      external_name: t03
+    - property: t04
+      external_name: t04
+    - property: t05
+      external_name: t05
+    - property: t06
+      external_name: t06
+    - property: t07
+      external_name: t07
+    - property: t08
+      external_name: t08
+    - property: t09
+      external_name: t09
+    - property: t10
+      external_name: t10
+    - property: t11
+      external_name: t11
+    - property: t12
+      external_name: t12
+    - property: t13
+      external_name: t13
