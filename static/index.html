@@ -155,13 +155,24 @@
 <div id="fb-root"></div>
 
 
-<div id="submit" style="display:none">
-  It looks like <b>you don't have your schedule posted</b> as a status using the proper format. Go to <a href="http://facebook.com/">Facebook</a>, and <b>post your schedule</b> in the format of "[Period <b>Number</b>] [<b>Class</b> Name] [<b>Teacher</b> Name]" on different lines. Once you're done, come back here.
+<div id="submit" style="display:none; margin-bottom: 10px">
+  
+
+  <!-- Go to <a href="http://facebook.com/">Facebook</a>, and <b>post your schedule</b> in the format of "[Period <b>Number</b>] [<b>Class</b> Name] [<b>Teacher</b> Name]" on different lines. Once you're done, come back here. -->
+  
+  <div style="float: right; width: 40%; padding: 10px">
+  It looks like <b>you don't have your schedule posted</b> as a status using the proper format. <b>That's okay</b>, just type your schedule in the adjacent box.
+  <p id="recognized">
+  </p>
+  </div>
+  <textarea style="height: 150px; margin: 10px; width: 40%; padding: 10px; font-family: sans-serif; border: none; " placeholder="" id="class_input" onkeyup="recognize_classes()"></textarea>
+
+  
 </div>
 
 <div id="shareplz" style="display:none">
   Please <a href="https://www.facebook.com/dialog/feed?app_id=282025336884&link=https://schedule-compare.appspot.com/&picture=https://schedule-compare.appspot.com/static/schedule.png&name=Schedule Compare&caption=https://schedule-compare.appspot.com/&description=Instantly compare your class schedule with your friends for coming school year&redirect_uri=https://schedule-compare.appspot.com/
-" onclick="postToFeed();return false">share this app on Facebook (click here)</a> and press the Like button right below. We also compare your schedule against other people who have used the app, so when more people use the app, the results become more complete and includes more people who aren't necessarily friends on Facebook.
+" onclick="postToFeed();return false">share this app on Facebook (click here)</a> and press the Like button right below. We also compare your schedule against other people who have used the app, so when more people use the app, the results become more complete and includes more people who aren't direct friends on Facebook.
 </div>
 
 

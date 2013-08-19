@@ -71,7 +71,6 @@ setProgress = (val) ->
 @login = ->
   $('buttonparent').style.display = 'none'
   # $('share').style.display = 'none'
-  $('shareplz').style.display = ''
   setProgress -1
   FB.login (resp) ->
     FB.api '/me', (resp) ->
@@ -85,7 +84,10 @@ setProgress = (val) ->
         
         [cb1, cb2] = race processSearch
         if classes.length > 0
+          
+          $('shareplz').style.display = ''
           searchClasses me.id, cb1
+
         else
           $("submit").style.display = ''
         completed = 0
@@ -177,6 +179,30 @@ uploadClasses = ->
   xhr.send("data=#{encodeURIComponent(JSON.stringify(dense))}")
 
 handleMessage = (status) ->
+  items = coreParse(status)
+  if 3 < items.length < 16
+    #console.log(item[0] for item in items) if items.length > 0 
+    nums = (i[0] for i in items).join('').match(/\d+/g)
+    if !nums or nums.length < 3
+      items = (["#{c+1} #{i[0]}",i[1]] for i,c in items)
+    for item in items
+      name = item[1]
+      tags = item[0]
+      if num = tags.match(/\d+/)
+        tags = tags
+          .replace(/\s?\d+\s?/, ' ')
+          .replace(/^\s+|\s+$/g, '')
+        tags = num[0] + ' ' + tags
+        cls = classify(item[1], tags.split(' '), status)
+        classes.push(cls) if cls
+  if classes.length > 2
+    classes
+  else
+    []
+
+
+
+coreParse = (status) ->
   [uid, msg] = [status.uid, status.message]
   classes = []
   if !/\n/.test(msg.replace(/^\s+|\s+$/g, ''))
@@ -207,26 +233,9 @@ handleMessage = (status) ->
     last = item[0].split(' ').slice(-1)[0]
     if last and last in "you,now,status,is,me,love,truth,go,yet,like,teeth,time,fine,also,beautiful,tomorrow,awesome,bible".split(',')
       return []
-  
-  if 3 < items.length < 16
-    #console.log(item[0] for item in items) if items.length > 0 
-    nums = (i[0] for i in items).join('').match(/\d+/g)
-    if !nums or nums.length < 3
-      items = (["#{c+1} #{i[0]}",i[1]] for i,c in items)
-    for item in items
-      name = item[1]
-      tags = item[0]
-      if num = tags.match(/\d+/)
-        tags = tags
-          .replace(/\s?\d+\s?/, ' ')
-          .replace(/^\s+|\s+$/g, '')
-        tags = num[0] + ' ' + tags
-        cls = classify(item[1], tags.split(' '), status)
-        classes.push(cls) if cls
-  if classes.length > 2
-    classes
-  else
-    []
+
+  return items
+
 
 classify = (name, parts, status) ->
   uid = status.uid
@@ -255,7 +264,7 @@ classify = (name, parts, status) ->
     
     current = cls.el.querySelector('span').innerHTML.replace(/<.+?>/g, '')
     if name.replace(/^[A-Z]/g,'').length > current.replace(/^[A-Z]/g,'').length #and name.length > current.length
-      cls.el.querySelector('span').innerHTML = "#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}"
+      cls.el.querySelector('span').innerHTML = "#{X(name).replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}"
 
   if cls.people.length > 1
     cls.el.style.display = ''  
@@ -302,7 +311,7 @@ showclass = (name, uid, period, teacher) ->
   div.style.display = 'none'
   if uid isnt me.id
     div.innerHTML = "<a style='float:right' href='#expand' onclick='expand_class(this, #{JSON.stringify([period,teacher])});return false'>+</a>"
-  div.innerHTML += "<div class='classname'><span>#{name.replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span></div>"
+  div.innerHTML += "<div class='classname'><span>#{X(name).replace(/[^\w]/g, ' ').replace(/([a-z]?\d)/i, '<b>$1</b>')}</span></div>"
   $('results').appendChild(div)
   div
   
@@ -340,7 +349,7 @@ showsched = (student, el) ->
   div = document.createElement('div')
   div.className = 'student'
 
-  div.innerHTML = "<a style='float:right' href='#expand' onclick='remove_popups();return false'>x</a><div class='arrow'></div><div class='classname'>#{student.name.replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
+  div.innerHTML = "<a style='float:right' href='#expand' onclick='remove_popups();return false'>x</a><div class='arrow'></div><div class='classname'>#{X(student.name).replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
   
   if el
     div.style.position = 'absolute'
@@ -393,7 +402,7 @@ showuser = (status) ->
   div = document.createElement('div')
   div.className = 'user'
   name = document.createElement('div')
-  name.innerHTML = '<span>'+names[uid]+'</span>'
+  name.innerHTML = '<span>'+X(names[uid])+'</span>'
   img = new Image()
   img.src = "https://graph.facebook.com/#{uid}/picture?type=square"
   div.appendChild(img)
@@ -411,6 +420,53 @@ showuser = (status) ->
   }
 
 
+
+placeholder_classes = [
+  '1 economics nash'
+  'R3 Algebraic Graph Theory Lambeau'
+  '4 Anatomy - Bartleby Gaines'
+  'W8 Potions S. Snape'
+  'period 2 symbology r. langdon'
+  'B5 Demonology A.V. Helsing'
+  '2 neuroscience xavier'
+  '5 Archaeology Jones'
+  'period 6 animal husbandry Prof. S. Oak'
+  '7 madscientology farnsworth'
+  '8 probability and statistics drakken'
+  '3 naturalism porter'
+  '4 Mathematics Moriarty'
+  'Period 5 History Kirke'
+]
+
+setInterval ->
+  $('class_input').placeholder = placeholder_classes[Math.floor(placeholder_classes.length * Math.random())]
+, 2000
+
+X = (ss) -> ss.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+
+recognize_classes = ->
+  items = coreParse({uid: 0, message: $('class_input').value})
+  recognized = []
+
+  for item in items
+    name = item[1]
+    tags = item[0]
+    if num = tags.match(/\d+/)
+      tags = tags
+        .replace(/\s?\d+\s?/, ' ')
+        .replace(/^\s+|\s+$/g, '')
+      tags = num[0] + ' ' + tags
+      # console.log item[1], tags.split(' ')
+      parts = tags.split(' ')
+      period = parts[0]
+      parts = parts.slice(1)
+      teacher = parts.slice(-1)[0]
+      if parseInt(period) < 12
+        recognized.push [period, teacher]
+      # console.log period, teacher
+
+  $('recognized').innerHTML = ("#{X(period)} <b>#{X(teacher)}</b>" for [period, teacher] in recognized).join(', ')
+      
 find_position = `function findPos(obj){
   var curleft = curtop = 0;
   if (obj.offsetParent) {
