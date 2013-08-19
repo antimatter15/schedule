@@ -3,6 +3,7 @@
 @times = {}
 @people = {}
 direct_friend = {}
+people_info = {}
 friends = 0
 completed = 0
 current_status = null
@@ -75,6 +76,7 @@ setProgress = (val) ->
   FB.login (resp) ->
     FB.api '/me', (resp) ->
       @me = resp      
+      people_info[me.id] = me
       names[me.id] = me.name
       getSchedule me.id, (classes) ->
         me.classes = {}
@@ -93,7 +95,7 @@ setProgress = (val) ->
         completed = 0
         getFriends cb2
 
-  , {scope: 'read_stream,user_status,friends_status'}
+  , {scope: 'read_stream,user_status,friends_status,user_education_history,friends_education_history,user_location,friends_location'}
 
 
 race = (cb) -> 
@@ -137,7 +139,7 @@ checkFriendship = (uid, time, teacher, name, status_id) ->
   else
     names[uid] = name
     FB.api {method: "friends.getMutualFriends", target_uid: uid}, (mutual)->
-      if mutual.length > 1 # >0 should probably be sufficient though
+      if mutual.length > 0
         classify("X", [time, teacher], {name, uid, status_id, message: ''})
         showMutualMessage uid
 
@@ -172,13 +174,27 @@ getSchedule = (uid, cb) ->
 
 uploadClasses = ->
   dense = for uid, friend of people when direct_friend[uid]
-    [names[uid], uid, friend.status_id, friend.time-0, cls.join(';') for cls in friend.classes, friend.message]
+    info = people_info[uid]
+    # birthday = info?.birthday
+    location = info?.location?.name
+    school = null
+    school_year = ''
+    if info.education
+      for place in info.education
+        sname = place?.school?.name
+        syear = place?.year?.name
+        if parseInt(syear) > parseInt(school_year) or !school_year
+          school_year = syear
+          school = sname
+
+    [names[uid], uid, friend.status_id, friend.time-0, school, location, school_year, cls.join(';') for cls in friend.classes, friend.message]
   xhr = new XMLHttpRequest
   xhr.open 'post', '/upload', true
   xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
   xhr.send("data=#{encodeURIComponent(JSON.stringify(dense))}")
 
 handleMessage = (status) ->
+  classes = []
   items = coreParse(status)
   if 3 < items.length < 16
     #console.log(item[0] for item in items) if items.length > 0 
@@ -201,10 +217,8 @@ handleMessage = (status) ->
     []
 
 
-
 coreParse = (status) ->
   [uid, msg] = [status.uid, status.message]
-  classes = []
   if !/\n/.test(msg.replace(/^\s+|\s+$/g, ''))
     split_regex = /\n|;/
   else
@@ -231,7 +245,7 @@ coreParse = (status) ->
     
   for item in items
     last = item[0].split(' ').slice(-1)[0]
-    if last and last in "you,now,status,is,me,love,truth,go,yet,like,teeth,time,fine,also,beautiful,tomorrow,awesome,bible".split(',')
+    if last and last in "you,now,status,is,so,me,love,truth,go,yet,like,teeth,time,fine,also,beautiful,tomorrow,awesome,bible,university".split(',')
       return []
 
   return items
@@ -271,8 +285,10 @@ classify = (name, parts, status) ->
   [period, teacher]
 
 getFriends = (cb) ->
-  FB.api '/me/friends', (resp) ->
-    direct_friend[friend.id] = names[friend.id] = friend.name for friend in resp.data
+  FB.api '/me/friends?fields=location,education,name', (resp) ->
+    for friend in resp.data
+      direct_friend[friend.id] = names[friend.id] = friend.name
+      people_info[friend.id] = friend
     cb() if cb
     for id, name of names
       friends++
@@ -416,7 +432,7 @@ showuser = (status) ->
     link: 'https://schedule-compare.appspot.com/',
     picture: 'https://schedule-compare.appspot.com/static/schedule.png',
     caption: 'https://schedule-compare.appspot.com/',
-    description: 'Instantly compare your class schedule with your friends for coming school year'
+    description: 'Instantly compare your class schedule with your friends for the coming school year'
   }
 
 

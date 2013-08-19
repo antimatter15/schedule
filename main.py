@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util
-from django.utils import simplejson
+import webapp2
+# from google.appengine.ext import webapp2
+# from google.appengine.ext.webapp2 import util
+# from django.utils import simplejson
+import json
 from google.appengine.ext import db
 from google.appengine.api import memcache
 
@@ -13,6 +14,10 @@ class Student(db.Model):
   status_id = db.StringProperty()
   status = db.TextProperty()
   time = db.DateProperty()
+  school = db.StringProperty()
+  location = db.StringProperty()
+  class_year = db.StringProperty()
+
   t00 = db.StringProperty() #for some cool school that has a zeroeth period
   t01 = db.StringProperty()
   t02 = db.StringProperty()
@@ -26,14 +31,14 @@ class Student(db.Model):
   t10 = db.StringProperty()
   t11 = db.StringProperty()
   t12 = db.StringProperty()
-  t13 = db.StringProperty() #I think whoever is unlucky enough to have a fourteenth period cant use the internet
+  t13 = db.StringProperty() #I think whoever is unlucky enough to have a fourteenth period has no time to use the internet
   
 
-class UploadHandler(webapp.RequestHandler):
+class UploadHandler(webapp2.RequestHandler):
   def post(self):
-    users = simplejson.loads(self.request.get('data'))
+    users = json.loads(self.request.get('data'))
     for user in users:
-      [name, uid, status_id, time, classes, status] = user
+      [name, uid, status_id, time, school, location, class_year, classes, status] = user
       if memcache.get(uid) is None:
         memcache.add(uid, 1, 60 * 60 * 24 * 30)
         student = Student.get_by_key_name(uid)
@@ -43,6 +48,9 @@ class UploadHandler(webapp.RequestHandler):
         student.status = status
         student.status_id = status_id
         student.time = datetime.date.fromtimestamp(float(time))
+        student.school = school
+        student.location = location
+        student.class_year = class_year
         for c in classes:
           [period, teacher] = c.split(";", 1)
           period = int(period)
@@ -78,10 +86,10 @@ class UploadHandler(webapp.RequestHandler):
         self.response.out.write(uid+",")
 
 
-class SearchHandler(webapp.RequestHandler):
+class SearchHandler(webapp2.RequestHandler):
   def get(self):
     self.response.headers['Content-Type'] = 'application/json'
-    classes = simplejson.loads(self.request.get('classes'))
+    classes = json.loads(self.request.get('classes'))
     searcher = self.request.get('uid')
     results = {}
     for c in classes:
@@ -96,10 +104,10 @@ class SearchHandler(webapp.RequestHandler):
         uid = user.key().name()
         if uid != searcher:
           results[c].append([user.name, uid, user.status_id])
-    self.response.out.write(simplejson.dumps(results))
+    self.response.out.write(json.dumps(results))
       
 
-class ExpandHandler(webapp.RequestHandler):
+class ExpandHandler(webapp2.RequestHandler):
   def get(self):
     self.response.headers['Content-Type'] = 'application/json'
     period = self.request.get("period")
@@ -113,9 +121,9 @@ class ExpandHandler(webapp.RequestHandler):
     for user in q.fetch(121):
       uid = user.key().name()
       results.append([user.name, uid, user.status_id])
-    self.response.out.write(simplejson.dumps(results))
+    self.response.out.write(json.dumps(results))
       
-class LookupHandler(webapp.RequestHandler):
+class LookupHandler(webapp2.RequestHandler):
   def get(self):
     self.response.headers['Content-Type'] = 'application/json'
     uid = self.request.get("uid")
@@ -123,10 +131,11 @@ class LookupHandler(webapp.RequestHandler):
     if student is None:
       self.response.out.write('{}')
     else:
-      self.response.out.write(simplejson.dumps({
+      self.response.out.write(json.dumps({
         "name": student.name,
         "status_id": student.status_id,
         "status": student.status,
+        "school": student.school,
         "t00": student.t00, "t01": student.t01, "t02": student.t02, "t03": student.t03,
         "t04": student.t04, "t05": student.t05, "t06": student.t06, "t07": student.t07,
         "t08": student.t08, "t09": student.t09, "t10": student.t10, "t11": student.t11,
@@ -135,20 +144,17 @@ class LookupHandler(webapp.RequestHandler):
       
 
 
-class FlushHandler(webapp.RequestHandler):
+class FlushHandler(webapp2.RequestHandler):
   def get(self):
     self.response.out.write(str(memcache.flush_all()))
     
 
-def main():
-  application = webapp.WSGIApplication([('/upload', UploadHandler),
+
+
+
+application = webapp2.WSGIApplication([('/upload', UploadHandler),
                                         ('/search', SearchHandler),
                                         ('/expand', ExpandHandler),
                                         ('/lookup', LookupHandler),
                                         ('/flush', FlushHandler)],
                      debug=True)
-  util.run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-  main()
