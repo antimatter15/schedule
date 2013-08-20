@@ -163,6 +163,12 @@
   <div style="float: right; width: 40%; padding: 10px">
   It looks like <b>you don't have your schedule posted</b> as a status. That's okay, just <b>type your schedule</b> in the adjacent box.
   <p id="recognized">
+  &nbsp;
+  </p>
+  <p>
+    <b>Don't have your schedule</b> yet? We can send you a reminder <select id="reminder" onchange="royksopp()">
+      <option value="never">Never</option>
+    </select>
   </p>
   </div>
   <textarea style="height: 150px; margin: 10px; width: 40%; padding: 10px; font-family: sans-serif; border: none; " placeholder="" id="class_input" onkeyup="recognize_classes()"></textarea>
@@ -172,7 +178,7 @@
 
 <div id="shareplz" style="display:none">
   Please <a href="https://www.facebook.com/dialog/feed?app_id=282025336884&link=https://schedule-compare.appspot.com/&picture=https://schedule-compare.appspot.com/static/schedule.png&name=Schedule Compare&caption=https://schedule-compare.appspot.com/&description=Instantly compare your class schedule with your friends for coming school year&redirect_uri=https://schedule-compare.appspot.com/
-" onclick="postToFeed();return false">share this app on Facebook (click here)</a> and press the Like button right below. We also compare your schedule against other people who have used the app, so when more people use the app, the results become more complete and includes more people who aren't direct friends on Facebook.
+" onclick="postToFeed();return false">share this app on Facebook</a>. We also compare your schedule against other people who have used the app, so when more people use the app, the results include people aren't direct friends on Facebook.
 </div>
 
 
@@ -216,6 +222,17 @@
 <script src="//connect.facebook.net/en_US/all.js"></script>
 <script src="/static/main.js?833"></script>
 <script src="/static/json2.min.js"></script>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-1367972-8', 'schedule-compare.appspot.com');
+  ga('send', 'pageview');
+
+</script>
 </body>
 </html>
 

@@ -1,0 +1,5 @@
+cron:
+ - description: send out reminders
+   url: /royksopp
+   schedule: every 5 minutes
+   timezone: America/New_York

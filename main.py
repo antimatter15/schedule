@@ -6,8 +6,17 @@ import webapp2
 import json
 from google.appengine.ext import db
 from google.appengine.api import memcache
+from google.appengine.api import urlfetch
 
 import datetime
+
+
+
+class Reminder(db.Model):
+  uid = db.StringProperty()
+  created = db.DateTimeProperty()
+  expires = db.DateTimeProperty()
+  purpose = db.StringProperty()
 
 class Student(db.Model):
   name = db.StringProperty()
@@ -93,8 +102,6 @@ class UploadHandler(webapp2.RequestHandler):
         self.response.out.write(uid+",")
     
 
-
-
 class SearchHandler(webapp2.RequestHandler):
   def get(self):
     self.response.headers['Content-Type'] = 'application/json'
@@ -158,12 +165,52 @@ class FlushHandler(webapp2.RequestHandler):
     self.response.out.write(str(memcache.flush_all()))
     
 
+class RemindHandler(webapp2.RequestHandler):
+  def post(self):
+    uid = self.request.get('uid')
+    days = self.request.get('days')
+    reminder = Student.get_by_key_name(uid)
+    if reminder is None:
+      reminder = Reminder(key_name = uid)
+    reminder.time = datetime.datetime.now()
+    reminder.expires = datetime.datetime.now() + datetime.timedelta(minutes = int(days))
+    reminder.purpose = self.request.get('purpose')
+    self.response.out.write('poop')
 
+
+class RemindDispatcher(webapp2.RequestHandler):
+  def get(self):
+    if self.request.headers.get('X-Appengine-Cron') != "true":
+      return
+    q = Reminder.all()
+    q.filter("expires <", datetime.datetime.now())
+    q.order("expires")
+    results = q.fetch(10)
+
+    client_id = "282025336884"
+    client_secret = "ece4f1c624e5e3fd58d01df6e7f54a0d"
+    access_token = None
+    for reminder in results:
+      if access_token is None:
+        # memcache it?
+        result = urlfetch.fetch("https://graph.facebook.com/oauth/access_token?client_id=" + client_id + "&client_secret=" + client_secret + "&grant_type=client_credentials")
+        access_token = result.content
+      form_data = {
+        "template": "Daisy, Daisy, Give me your answer, do. ",
+        "href": "https://schedule-compare.appspot.com/"
+      }
+      urlfetch.fetch("https://graph.facebook.com/" + reminder.key().name() + "/notifications?" + access_token,
+                    payload=form_data,
+                    method=urlfetch.POST,
+                    headers={'Content-Type': 'application/x-www-form-urlencoded'})
+      reminder.delete()
 
 
 application = webapp2.WSGIApplication([('/upload', UploadHandler),
                                         ('/search', SearchHandler),
                                         ('/expand', ExpandHandler),
                                         ('/lookup', LookupHandler),
-                                        ('/flush', FlushHandler)],
+                                        ('/flush', FlushHandler),
+                                        ('/remind', RemindHandler),
+                                        ('/royksopp', RemindDispatcher)],
                      debug=True)
