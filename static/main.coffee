@@ -138,7 +138,8 @@ checkFriendship = (uid, time, teacher, name, status_id) ->
     classify("X", [time, teacher], {name, uid, status_id, message: ''}) 
   else
     names[uid] = name
-    FB.api {method: "friends.getMutualFriends", target_uid: uid}, (mutual)->
+    # Check if they share the same school name and skip mutual friend count
+    FB.api {method: "friends.getMutualFriends", target_uid: uid}, (mutual) ->
       if mutual.length > 0
         classify("X", [time, teacher], {name, uid, status_id, message: ''})
         showMutualMessage uid
@@ -191,7 +192,7 @@ uploadClasses = ->
   xhr = new XMLHttpRequest
   xhr.open 'post', '/upload', true
   xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
-  xhr.send("data=#{encodeURIComponent(JSON.stringify(dense))}")
+  xhr.send("actor=#{me.id}&data=#{encodeURIComponent(JSON.stringify(dense))}")
 
 handleMessage = (status) ->
   classes = []

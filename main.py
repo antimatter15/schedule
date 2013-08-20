@@ -17,6 +17,7 @@ class Student(db.Model):
   school = db.StringProperty()
   location = db.StringProperty()
   class_year = db.StringProperty()
+  source = db.StringProperty()
 
   t00 = db.StringProperty() #for some cool school that has a zeroeth period
   t01 = db.StringProperty()
@@ -36,10 +37,11 @@ class Student(db.Model):
 
 class UploadHandler(webapp2.RequestHandler):
   def post(self):
+    me = self.request.get('actor')
     users = json.loads(self.request.get('data'))
     for user in users:
       [name, uid, status_id, time, school, location, class_year, classes, status] = user
-      if memcache.get(uid) is None:
+      if memcache.get(uid) is None or me == uid:
         memcache.add(uid, 1, 60 * 60 * 24 * 30)
         student = Student.get_by_key_name(uid)
         if student is None:
@@ -51,6 +53,11 @@ class UploadHandler(webapp2.RequestHandler):
         student.school = school
         student.location = location
         student.class_year = class_year
+        if me == uid:
+          student.source = 'self'
+        else:
+          student.source = me
+
         for c in classes:
           [period, teacher] = c.split(";", 1)
           period = int(period)
@@ -84,6 +91,8 @@ class UploadHandler(webapp2.RequestHandler):
             student.t13 = teacher
         student.put()
         self.response.out.write(uid+",")
+    
+
 
 
 class SearchHandler(webapp2.RequestHandler):

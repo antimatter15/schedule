@@ -331,7 +331,7 @@ uploadClasses = function() {
   xhr = new XMLHttpRequest;
   xhr.open('post', '/upload', true);
   xhr.setRequestHeader('Content-Type', "application/x-www-form-urlencoded");
-  return xhr.send("data=" + (encodeURIComponent(JSON.stringify(dense))));
+  return xhr.send("actor=" + me.id + "&data=" + (encodeURIComponent(JSON.stringify(dense))));
 };
 
 handleMessage = function(status) {
