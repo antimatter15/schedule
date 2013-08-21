@@ -8,12 +8,13 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 
+import urllib
 import datetime
+import time
 
 
 
 class Reminder(db.Model):
-  uid = db.StringProperty()
   created = db.DateTimeProperty()
   expires = db.DateTimeProperty()
   purpose = db.StringProperty()
@@ -22,7 +23,7 @@ class Student(db.Model):
   name = db.StringProperty()
   status_id = db.StringProperty()
   status = db.TextProperty()
-  time = db.DateProperty()
+  time = db.DateTimeProperty()
   school = db.StringProperty()
   location = db.StringProperty()
   class_year = db.StringProperty()
@@ -58,7 +59,7 @@ class UploadHandler(webapp2.RequestHandler):
         student.name = name
         student.status = status
         student.status_id = status_id
-        student.time = datetime.date.fromtimestamp(float(time))
+        student.time = datetime.datetime.fromtimestamp(float(time))
         student.school = school
         student.location = location
         student.class_year = class_year
@@ -151,6 +152,7 @@ class LookupHandler(webapp2.RequestHandler):
         "name": student.name,
         "status_id": student.status_id,
         "status": student.status,
+        "time": time.mktime(student.time.timetuple()),
         "school": student.school,
         "t00": student.t00, "t01": student.t01, "t02": student.t02, "t03": student.t03,
         "t04": student.t04, "t05": student.t05, "t06": student.t06, "t07": student.t07,
@@ -169,13 +171,34 @@ class RemindHandler(webapp2.RequestHandler):
   def post(self):
     uid = self.request.get('uid')
     days = self.request.get('days')
-    reminder = Student.get_by_key_name(uid)
+    reminder = Reminder.get_by_key_name(uid)
+    try:
+      int(days)
+
+      if reminder is None:
+        reminder = Reminder(key_name = uid)
+        self.response.out.write('create')
+      else:
+        self.response.out.write('update')
+      reminder.created = datetime.datetime.now()
+      reminder.expires = datetime.datetime.now() + datetime.timedelta(days = int(days))
+      reminder.purpose = self.request.get('purpose')
+      reminder.put()
+
+    except ValueError:
+      if reminder is None:
+        self.response.out.write('naught')
+      else:
+        reminder.delete()
+        self.response.out.write('delete')
+  
+  def get(self):
+    uid = self.request.get('uid')
+    reminder = Reminder.get_by_key_name(uid)
     if reminder is None:
-      reminder = Reminder(key_name = uid)
-    reminder.time = datetime.datetime.now()
-    reminder.expires = datetime.datetime.now() + datetime.timedelta(minutes = int(days))
-    reminder.purpose = self.request.get('purpose')
-    self.response.out.write('poop')
+      self.response.out.write('narp')
+    else:
+      self.response.out.write(time.mktime(reminder.expires.timetuple()))
 
 
 class RemindDispatcher(webapp2.RequestHandler):
@@ -199,11 +222,12 @@ class RemindDispatcher(webapp2.RequestHandler):
         "template": "Daisy, Daisy, Give me your answer, do. ",
         "href": "https://schedule-compare.appspot.com/"
       }
-      urlfetch.fetch("https://graph.facebook.com/" + reminder.key().name() + "/notifications?" + access_token,
-                    payload=form_data,
+      reminder.delete()
+      post_result = urlfetch.fetch("https://graph.facebook.com/" + reminder.key().name() + "/notifications?" + access_token,
+                    payload=urllib.urlencode(form_data),
                     method=urlfetch.POST,
                     headers={'Content-Type': 'application/x-www-form-urlencoded'})
-      reminder.delete()
+      
 
 
 application = webapp2.WSGIApplication([('/upload', UploadHandler),

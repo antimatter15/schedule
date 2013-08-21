@@ -1,6 +1,7 @@
 <!doctype html>
 <head>
 <title>Schedule Compare</title>
+<meta charset="utf-8">
 <style>
   .class {
     background-color: #D7E1E2;
@@ -165,10 +166,13 @@
   <p id="recognized">
   &nbsp;
   </p>
-  <p>
+  <p id="reminderbox">
     <b>Don't have your schedule</b> yet? We can send you a reminder <select id="reminder" onchange="royksopp()">
       <option value="never">Never</option>
-    </select>
+    </select><span id="checkmark" style="display:none">&#x2713;</span>
+  </p>
+  <p style="display:none" id="continuebox">
+  <button style="padding: 10px" onclick="submit_schedule()">Compare Schedules</button>
   </p>
   </div>
   <textarea style="height: 150px; margin: 10px; width: 40%; padding: 10px; font-family: sans-serif; border: none; " placeholder="" id="class_input" onkeyup="recognize_classes()"></textarea>
@@ -178,7 +182,7 @@
 
 <div id="shareplz" style="display:none">
   Please <a href="https://www.facebook.com/dialog/feed?app_id=282025336884&link=https://schedule-compare.appspot.com/&picture=https://schedule-compare.appspot.com/static/schedule.png&name=Schedule Compare&caption=https://schedule-compare.appspot.com/&description=Instantly compare your class schedule with your friends for coming school year&redirect_uri=https://schedule-compare.appspot.com/
-" onclick="postToFeed();return false">share this app on Facebook</a>. We also compare your schedule against other people who have used the app, so when more people use the app, the results include people aren't direct friends on Facebook.
+" onclick="postToFeed();return false">share this app on Facebook</a>. We also compare your schedule against other people who have used the app, so when more people use the app, the results include people aren't direct friends on Facebook. <label for="next_year" style="font-size: 80%; float: right"><input type="checkbox" id="next_year" checked onchange="change_annual()">&nbsp;Remind me about Schedule Compare next year</label>
 </div>
 
 
@@ -207,7 +211,7 @@
 </div>
 <div id="buttonparent">
   <a href="#"  id="button" onclick="login();return false">
-    <div style="padding-bottom:20px;">
+    <div style="padding-bottom:20px;box-shadow: 0px 0px 40px #ddd">
     <div style="width:120px;display:inline;background: url(/static/schedule.png) no-repeat;margin:20px;height:121px;float:left"></div>
     <div id="content">
       <h1>Find out who is in your classes</h1>

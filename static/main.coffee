@@ -83,27 +83,70 @@ setProgress = (val) ->
 			people_info[me.id] = me
 			names[me.id] = me.name
 			getSchedule me.id, (classes) ->
-				me.classes = {}
-				if @people[me.id]
-					for [time, teacher] in @people[me.id].classes
-						me.classes[time+teacher] = 1 
-				
-				
 				if classes.length > 0
-					[cb1, cb2] = race processSearch	
-					$('shareplz').style.display = ''
-
-					completed = 0
-					getFriends cb2
-
-					searchClasses me.id, cb1
-
+					main_search()
 				else
-					setProgress 0
-					$("submit").style.display = ''
+					lookup_user me.id, (merp) ->
+						if merp.name
+							gotSchedule me.id, [{
+								message: merp.status,
+								status_id: "",
+								time: merp.time.toString(),
+								uid: me.id
+							}]
+
+							main_search()
+						else
+							setProgress 0
+							$("submit").style.display = ''
 
 	, {scope: 'read_stream,user_status,friends_status,user_education_history,friends_education_history,user_location,friends_location'}
 
+
+main_search = ->
+	me.classes = {}
+	if @people[me.id]
+		for [time, teacher] in @people[me.id].classes
+			me.classes[time+teacher] = 1 
+	
+	[cb1, cb2] = race processSearch	
+	$('shareplz').style.display = ''
+
+	completed = 0
+	getFriends cb2
+
+	searchClasses me.id, cb1
+
+	
+
+	xhr = new XMLHttpRequest
+	xhr.open 'get', "/remind?uid=#{me.id}", true
+	xhr.onreadystatechange = ->
+		if xhr.readyState == 4
+			if xhr.responseText is 'narp'
+				[school_name, school_year] = education_info(me.id)
+				this_year = (new Date).getFullYear()
+				if this_year == parseInt(school_year) - 1
+					$('next_year').checked = false
+			change_annual()
+
+	xhr.send()
+
+
+
+@submit_schedule = ->
+	setProgress -1
+	
+	$("submit").style.display = 'none'
+
+	gotSchedule me.id, [{
+		message: $('class_input').value,
+		status_id: "",
+		time: Math.floor((new Date())/1000).toString(),
+		uid: me.id
+	}]
+
+	main_search()
 
 race = (cb) -> 
 	gcb1 = false
@@ -156,45 +199,54 @@ getSchedule = (uid, cb) ->
 		method: 'fql.query',
 		query: "select message, uid, status_id, time from status where uid=#{uid} and time > #{old_thresh} and (#{selectors.join(' or ')})"
 	}, (resp) ->
-		classes = []
-		stime = 0
-		sid = 0
-		msg = ""
-		for status in resp
-			temp = handleMessage(status)
-			if temp.length > 0
-				classes = classes.concat(temp) 
-				sid = status.status_id
-				stime = status.time
-				msg = status.message
-		if classes.length > 0
-			@people[uid] = {time: stime, status_id: sid, classes, uid, message: msg}
-			showMutualMessage uid
+		classes = gotSchedule(uid, resp)
 		cb(classes) if cb
-		if friends
-			setProgress (++completed)/friends
-		if completed/friends == 1
-			setProgress 0
-			$('share').style.display = ''
-			uploadClasses()
 
+gotSchedule = (uid, resp) ->
+	classes = []
+	stime = 0
+	sid = 0
+	msg = ""
+	for status in resp
+		temp = handleMessage(status)
+		if temp.length > 0
+			classes = classes.concat(temp) 
+			sid = status.status_id
+			stime = status.time
+			msg = status.message
+	if classes.length > 0
+		@people[uid] = {time: stime, status_id: sid, classes, uid, message: msg}
+		showMutualMessage uid
+	if friends
+		setProgress (++completed)/friends
+	if completed/friends == 1
+		setProgress 0
+		$('share').style.display = ''
+		uploadClasses()
+	return classes
+
+
+education_info = (uid) ->
+	info = people_info[uid]
+	school = null
+	school_year = ''
+	if info.education
+		for place in info.education
+			sname = place?.school?.name
+			syear = place?.year?.name
+			if parseInt(syear) > parseInt(school_year) or !school_year
+				school_year = syear
+				school = sname
+	return [school, school_year]	
 
 
 uploadClasses = ->
-	dense = for uid, friend of people when direct_friend[uid]
+	dense = for uid, friend of people when direct_friend[uid] or uid is me.id
 		info = people_info[uid]
 		# birthday = info?.birthday
 		location = info?.location?.name
-		school = null
-		school_year = ''
-		if info.education
-			for place in info.education
-				sname = place?.school?.name
-				syear = place?.year?.name
-				if parseInt(syear) > parseInt(school_year) or !school_year
-					school_year = syear
-					school = sname
-
+		[school, school_year] = education_info(uid)
+		
 		[names[uid], uid, friend.status_id, friend.time-0, school, location, school_year, cls.join(';') for cls in friend.classes, friend.message]
 	xhr = new XMLHttpRequest
 	xhr.open 'post', '/upload', true
@@ -359,22 +411,25 @@ showclass = (name, uid, period, teacher) ->
 
 
 @expand_user = (uid, el) ->
+	lookup_user uid, (student) ->
+		if student.name
+			student.uid = uid
+			showsched(student, el)
+
+
+lookup_user = (uid, cb) ->
 	xhr = new XMLHttpRequest
 	xhr.open 'get', "/lookup?uid=#{uid}", true
 	xhr.onreadystatechange = ->
 		if xhr.readyState == 4
-			student = JSON.parse(xhr.responseText)
-			if student.name
-				student.uid = uid
-				showsched(student, el)
+			cb JSON.parse(xhr.responseText)
 	xhr.send()
-
 
 showsched = (student, el) ->
 	div = document.createElement('div')
 	div.className = 'student'
 
-	div.innerHTML = "<a style='float:right' href='#expand' onclick='remove_popups();return false'>x</a><div class='arrow'></div><div class='classname'>#{X(student.name).replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
+	div.innerHTML = "<a style='float:right' href='#expand' onclick='remove_popups();return false'>&times;</a><div class='arrow'></div><div class='classname'>#{X(student.name).replace(/^([^ ]+)/g, '<b>$1</b>')}</div>"
 	
 	if el
 		div.style.position = 'absolute'
@@ -389,7 +444,7 @@ showsched = (student, el) ->
 	link = document.createElement('a')
 	link.appendChild(img)
 	
-	if direct_friend[student.uid] or student.uid is me.id
+	if (direct_friend[student.uid] or student.uid is me.id) and student.status_id
 		link.href = 'http://facebook.com/' + student.uid + '/posts/' + student.status_id
 	else
 		link.href = 'http://facebook.com/' + student.uid
@@ -400,6 +455,8 @@ showsched = (student, el) ->
 	list.innerText = student.status
 	div.appendChild(list)
 	$('results').appendChild(div)
+
+
 
 
 last_popup = ''
@@ -420,7 +477,7 @@ showuser = (status) ->
 				last_popup = null
 			e.preventDefault()
 
-	if direct_friend[uid] or uid is me.id
+	if (direct_friend[uid] or uid is me.id) and status.status_id
 		a.href = 'http://facebook.com/' + uid + '/posts/'+status.status_id
 	else
 		a.href = 'http://facebook.com/' + uid
@@ -483,11 +540,27 @@ do ->
 
 
 royksopp = ->
+	$("checkmark").style.display = 'none'
 	xhr = new XMLHttpRequest
 	xhr.open 'post', '/remind', true
 	xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
-	xhr.send("uid=#{me.id}&days=#{$('reminder').value}")
+	xhr.send("uid=#{me.id}&days=#{$('reminder').value}&purpose=wait")
+	xhr.onload = ->
+		setTimeout ->
+			$("checkmark").style.display = ''
+		, 300
 
+change_annual = ->
+	xhr = new XMLHttpRequest
+	xhr.open 'post', '/remind', true
+	xhr.setRequestHeader 'Content-Type', "application/x-www-form-urlencoded"
+	if $('next_year').checked
+		days = 364
+	else
+		days = 'never'
+	xhr.send("uid=#{me.id}&days=#{days}&purpose=annual")
+
+	
 X = (ss) -> ss.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 
 recognize_classes = ->
@@ -512,6 +585,12 @@ recognize_classes = ->
 			# console.log period, teacher
 
 	$('recognized').innerHTML = ("#{X(period)} <b>#{X(teacher)}</b>" for [period, teacher] in recognized).join(', ') || '&nbsp;'
+	if recognized.length > 3
+		$('continuebox').style.display = ''
+		$('reminderbox').style.display = 'none'
+	else
+		$('continuebox').style.display = 'none'
+		$('reminderbox').style.display = ''
 			
 find_position = `function findPos(obj){
 	var curleft = curtop = 0;
